@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.turbo/
+dist/
+.direnv/
+.pgdata/
+.pgrun/
+.env*.local
+*.log
+.DS_Store
