@@ -33,6 +33,20 @@ function reconcileLayout(
   return compact(next);
 }
 
+/** Content equality on the contract's fields only — RGL decorates items
+ *  with ephemera (`moved`, drag flags) that must not count as change. */
+function sameLayout(
+  a: ReadonlyArray<GridLayoutItem>,
+  b: ReadonlyArray<GridLayoutItem>,
+): boolean {
+  if (a.length !== b.length) return false;
+  const byId = new Map(b.map((l) => [l.i, l]));
+  return a.every((l) => {
+    const m = byId.get(l.i);
+    return m !== undefined && m.x === l.x && m.y === l.y && m.w === l.w && m.h === l.h;
+  });
+}
+
 interface DashboardStoreState {
   cards: DashboardCard[];
   layout: GridLayoutItem[];
@@ -132,7 +146,27 @@ export const useDashboardStore = create<DashboardStoreState>()(
         set({ cards, layout: compact(layout) });
       },
 
-      setLayout: (layout) => set({ layout }),
+      /** Sink for RGL's onLayoutChange. RGL v2's publish effect can echo a
+       *  layout that's one commit stale — right after an external drop it
+       *  emits its pre-drop internal layout, which is missing the slot
+       *  `addCard` just wrote. Accepting that verbatim erases the new
+       *  card's position, and RGL's adopt/publish effects then chase the
+       *  alternating states forever ("Maximum update depth exceeded").
+       *  So: a published layout missing any live card is that stale echo —
+       *  reject it wholesale. Complete ones are accepted in cards order,
+       *  stripped to contract fields (drops the `__dropping__` placeholder
+       *  and RGL ephemera like `moved`), and no-op'd when nothing actually
+       *  changed — the no-op is what breaks the cycle. */
+      setLayout: (layout) =>
+        set((state) => {
+          const published = new Map(layout.map((l) => [l.i, l]));
+          if (state.cards.some((card) => !published.has(card.id))) return state;
+          const next = state.cards.map((card) => {
+            const l = published.get(card.id) as GridLayoutItem;
+            return { i: l.i, x: l.x, y: l.y, w: l.w, h: l.h };
+          });
+          return sameLayout(next, state.layout) ? state : { layout: next };
+        }),
       setDraggingCardType: (draggingCardType) => set({ draggingCardType }),
     }),
     {

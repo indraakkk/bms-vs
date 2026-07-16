@@ -155,6 +155,13 @@ every card refetches" work — no manual event bus. `react-grid-layout` v2
 dashboard canvas; new externally-added cards run through RGL's own
 `verticalCompactor.compact()` before being stored, since v2 doesn't
 auto-compact positions supplied from outside its own drag/resize reducer.
+A second RGL v2 quirk: right after an external drop, its publish effect
+can fire `onLayoutChange` with a stale (pre-drop) layout that's missing
+the card `addCard` just placed — the store's `setLayout` therefore
+rejects any published layout missing a live card's slot and no-ops on
+non-changes (see the comment on `setLayout`); storing such an echo
+verbatim re-enters RGL's adopt/publish effect cycle until React's
+"Maximum update depth exceeded" guard trips.
 The floor plan (`components/floor-plan/`) draws only the zones each
 floor's real occupancy data has (`zone-shapes.ts`'s verified matrix —
 `BLD-001` floor 2 is the only 3-zone floor), never a fabricated zone;

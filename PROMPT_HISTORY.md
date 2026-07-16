@@ -703,6 +703,66 @@ length-hiding, so the 4-digit assumption lived only in the client.
 
 ---
 
+## Post-P8 fix — "Maximum update depth exceeded" when dropping a palette card
+
+**Prompt**: Runtime error report — `Maximum update depth exceeded` at
+`DashboardCanvas`'s `<GridLayout>` (React's infinite-nested-update
+guard), happening when dragging a new card from the palette onto the
+canvas; use the already-installed stack (zustand, the contract types)
+for the fix.
+
+**Response summary**: Reproduced first (synthetic HTML5 drag events via
+Playwright — `dragstart` on a palette tile with a real `DataTransfer`,
+`dragover`s across the grid, `drop`), which crashed exactly as reported
+and left forensic evidence in localStorage: the dropped cards' layout
+slots had been persisted as stacked 1×1 items at the bottom of the grid
+— RGL's "child with no layout entry" fallback, proof the store had been
+handed layouts missing cards it owned.
+
+Root cause (read from RGL v2.2.3's shipped source, not guessed): after
+an external drop, RGL resets its internal layout to the *pre-drop*
+state, then our `onDrop` → `addCard` writes the new card + slot into the
+store. In the next commit RGL's props→state sync effect adopts the store
+layout (with the new card), but its publish effect — gated by a
+`prevLayoutRef` frozen while the drag suppressed publishing — fires
+`onLayoutChange` with the pre-drop layout. `setLayout` saved that
+verbatim, erasing the new card's slot; RGL then re-synthesized a 1×1
+slot, re-published, the sync effect re-adopted… the two effects chased
+each other's previous value until React's nested-update limit tripped.
+
+Fix, entirely in `stores/dashboard-store.ts` (`setLayout`): treat
+`cards` as the source of truth for which slots may exist. A published
+layout missing any live card **is** the stale echo — reject it
+wholesale. Complete layouts are accepted in cards order, stripped to the
+contract's `{i,x,y,w,h}` (which also drops the `__dropping__`
+placeholder and RGL ephemera like `moved`), and when nothing materially
+changed the state is returned untouched so zustand doesn't notify — that
+no-op is what breaks the cycle.
+
+Verified in the browser: the exact crashing drag now lands the card at
+the drop position with its type's default size and auto-opens the config
+modal, console clean; regression-checked click-to-add, header-drag of an
+existing card (neighbors re-compact correctly), remove, and that the
+crash-loop's phantom "New KPI Card" leftovers clean up with their normal
+Remove buttons. `typecheck`, `lint`, production `build` all clean.
+
+**My decision**:
+- First wrote a softer merge (restore missing slots from current state,
+  re-compact), then rejected my own fix before shipping it: re-compaction
+  can legitimately settle on a *different-but-valid* arrangement than the
+  one `addCard` stored, and two content-different fixpoints ping-pong
+  through RGL's adopt/publish effects exactly like the original bug.
+  Wholesale rejection of incomplete publishes has a provable fixpoint:
+  the store only ever converges toward what it already asserted.
+- No RGL fork/patch and no version bump — the store-side invariant
+  ("never accept a layout that loses a card") is worth having against
+  any future publisher misbehavior, and it keeps the fix in app code.
+- The 1×1 phantom cards already persisted by earlier crashes were *not*
+  auto-migrated away — they're indistinguishable from deliberately added
+  unconfigured cards, and they're removable through the normal UI.
+
+---
+
 ## AI % vs. own-decision (running)
 
 | Phase | AI-authored | Owner-decided / overridden | Notes |
@@ -717,3 +777,4 @@ length-hiding, so the 4-digit assumption lived only in the client.
 | P7 | SeverityBadge, toasts, README.md, ARCHITECTURE.md | Substituting `/code-review` + `/security-review` for the plan's unavailable "production-readiness-review" skill; fixing all 6 GATE findings (crash, 2 filter-coercion bugs, incomplete timezone fix, open redirect, gitignore gap) rather than deferring any; adding `dbType` as a new field instead of a special case | The highest-value phase for catching real defects after the fact — every GATE finding was invisible to typecheck/lint/build, and one (the timezone bug) was in code that had *already* passed its own phase's live browser verification, which is the strongest evidence in this whole build for why an end-of-build adversarial pass earns its cost even on already-tested code |
 | P8 | Theme tokens + next-themes wiring, sidebar shell, restyled dashboard/filter/palette/cards/modal/floor-plan/login, chart rebuilds, icons.tsx, export/import/sample/duplicate features, KPI spark hook, persist migration | Running design-sync's tooling in reverse (read-only import); mock-as-spec vs. app-as-law arbitration per feature (real calendar over hour selects, no "Simulate stale", no distinct-value dropdowns, real timestamp-column select); sparkline as a second real query instead of client-side fabrication; occupancy hues as swappable tokens; migrating old persisted layouts instead of discarding them; 4-digit keypad trade-off | The mock-render vs. app side-by-side loop caught exactly the class of gap a code-only pass would ship: singular/plural footer text, delta-pill spacing, bar ordering, lowercase aggregation labels — none of them errors, all of them visible. And the mock itself was load-bearing twice: its THEMES map matched the dormant shadcn `.dark` block already in globals.css, and its sample configs mapped 1:1 onto real TABLE_META columns, both signs the design was authored *from* this repo's own contract |
 | P8.1 (fix) | Free-length PIN login form; docs (.env.example, README, CLAUDE.md) | Reversing the P8 keypad trade-off in favor of the original openssl-secure-PIN design; gating the dev-PIN hint/demo button to development builds rather than deleting them; `openssl rand -hex 16` over base64 for the documented generator | The 4-digit assumption existed only client-side — the contract and AuthService had supported free-length PINs since P6, so the fix was a form swap plus docs, evidence that keeping validation/comparison server-side kept the design mistake shallow |
+| P8.2 (fix) | `setLayout` stale-echo rejection in dashboard-store; PROMPT_HISTORY/CLAUDE.md notes | Reproducing with synthetic DnD events before theorizing; reading RGL v2.2.3's shipped effect code to name the exact race instead of pattern-matching "setState in effect"; discarding the first (merge+recompact) fix for having the same oscillation failure mode as the bug; store-invariant fix over RGL fork/patch | The localStorage fossils (stacked 1×1 slots) identified the failure class before any source reading — persisted state is a debugging artifact, not just app data. And the discarded first fix is the phase's real lesson: a fix that survives the reproducer can still share the bug's failure mode; convergence had to be argued, not just observed |
