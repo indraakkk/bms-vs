@@ -1,33 +1,62 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "react-grid-layout/css/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Theme tokens ported 1:1 from the approved Claude Design mock
+ * ("VS BMS Dashboard.dc.html" THEMES map — dark is the default theme).
+ * Design-name → shadcn-name mapping: bg→background, surface-1→card/popover,
+ * surface-2→secondary/muted, primary-soft→accent, fg→foreground,
+ * fg-muted→muted-foreground, crit→destructive. Tokens with no shadcn
+ * equivalent (surface-3, fg-subtle, status softs, occupancy ramp, chart
+ * series ramp c1–c5) keep their design names below.
+ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0 0 0);
+  --primary: oklch(0 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary-foreground: oklch(0 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent-foreground: oklch(0 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --success: oklch(0.63 0.17 145);
-  --warning: oklch(0.72 0.17 55);
-  --critical: oklch(0.577 0.245 27.325);
-  --info: oklch(0.6 0.15 250);
+
+  --surface-3: oklch(0.922 0 0);
+  --border-strong: oklch(0.922 0 0);
+  --fg-subtle: oklch(0.708 0 0);
+  --ok: oklch(0.723 0.219 149.579);
+  --ok-soft: oklch(0.723 0.219 149.579 / 10%);
+  --crit: oklch(0.577 0.245 27.325);
+  --crit-soft: oklch(0.577 0.245 27.325 / 10%);
+  --warn: oklch(0 0 0);
+  --warn-soft: oklch(0.97 0 0);
+  --info: oklch(0.556 0 0);
+  --info-soft: oklch(0.97 0 0);
+  --occ-low: oklch(0.556 0 0);
+  --occ-mid: oklch(0.723 0.219 149.579);
+  --occ-high: oklch(0.577 0.245 27.325);
+  --occ-stale: oklch(0.708 0 0);
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --c1: oklch(0 0 0);
+  --c2: oklch(0 0 0 / 62%);
+  --c3: oklch(0 0 0 / 42%);
+  --c4: oklch(0 0 0 / 28%);
+  --c5: oklch(0 0 0 / 18%);
+  --grid: oklch(0.922 0 0 / 50%);
 }
 
 .dark {
@@ -50,10 +79,29 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --success: oklch(0.7 0.17 145);
-  --warning: oklch(0.75 0.17 55);
-  --critical: oklch(0.704 0.191 22.216);
-  --info: oklch(0.65 0.15 250);
+
+  --surface-3: oklch(0.371 0 0);
+  --border-strong: oklch(1 0 0 / 15%);
+  --fg-subtle: oklch(0.556 0 0);
+  --ok: oklch(0.792 0.209 151.711);
+  --ok-soft: oklch(0.792 0.209 151.711 / 15%);
+  --crit: oklch(0.704 0.191 22.216);
+  --crit-soft: oklch(0.704 0.191 22.216 / 15%);
+  --warn: oklch(0.985 0 0);
+  --warn-soft: oklch(0.371 0 0);
+  --info: oklch(0.708 0 0);
+  --info-soft: oklch(0.269 0 0);
+  --occ-low: oklch(0.708 0 0);
+  --occ-mid: oklch(0.792 0.209 151.711);
+  --occ-high: oklch(0.704 0.191 22.216);
+  --occ-stale: oklch(0.556 0 0);
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --c1: oklch(0.922 0 0);
+  --c2: oklch(0.922 0 0 / 65%);
+  --c3: oklch(0.922 0 0 / 45%);
+  --c4: oklch(0.922 0 0 / 30%);
+  --c5: oklch(0.922 0 0 / 20%);
+  --grid: oklch(1 0 0 / 5%);
 }
 
 @theme inline {
@@ -80,10 +128,23 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-critical: var(--critical);
+  --color-surface-3: var(--surface-3);
+  --color-border-strong: var(--border-strong);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-crit: var(--crit);
+  --color-crit-soft: var(--crit-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-occ-low: var(--occ-low);
+  --color-occ-mid: var(--occ-mid);
+  --color-occ-high: var(--occ-high);
+  --color-occ-stale: var(--occ-stale);
+  --font-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
 @layer base {
@@ -91,6 +152,129 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-[14px] text-foreground;
+    text-rendering: optimizeLegibility;
   }
+  ::selection {
+    background: var(--accent);
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--fg-subtle);
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Design-mock keyframes (VS BMS Dashboard.dc.html) */
+@keyframes shimmer {
+  100% {
+    transform: translateX(160%);
+  }
+}
+@keyframes livedot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  80% {
+    transform: translateX(4px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-8px);
+  }
+  40%,
+  60% {
+    transform: translateX(8px);
+  }
+}
+@keyframes ping-dot {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+/* react-grid-layout: theme the stock placeholder/handle to the mock's
+ * "Drop card here" dashed box and corner resize glyph. */
+.react-grid-placeholder {
+  background: var(--accent);
+  opacity: 1;
+  border: 2px dashed var(--primary);
+  border-radius: 14px;
+}
+.react-grid-item > .react-resizable-handle {
+  background-image: none;
+  width: 18px;
+  height: 18px;
+}
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--fg-subtle);
+  border-bottom: 2px solid var(--fg-subtle);
+  border-bottom-right-radius: 2px;
+}
+.react-grid-item.react-draggable-dragging {
+  z-index: 10;
+  cursor: grabbing;
+}
+
+/* Sonner: the mock's toast is an inverted bottom-center pill; errors go
+ * on the critical color. */
+[data-sonner-toast][data-type="error"] {
+  --normal-bg: var(--crit) !important;
+  --normal-text: #fff !important;
 }

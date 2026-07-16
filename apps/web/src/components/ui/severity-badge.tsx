@@ -1,31 +1,37 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-/** Critical=red, Warning=orange, Info=blue — fixed regardless of theme or chart palette. */
+/**
+ * Severity keeps its fixed meaning in the design's palette: red is
+ * reserved for Critical; Warning/Info ride the theme's mono warn/info
+ * tokens (soft pill + strong text, the mock's badge idiom).
+ */
 const SEVERITY_STYLES: Record<string, string> = {
-  Critical: "border-transparent bg-red-600 text-white dark:bg-red-500",
-  Warning: "border-transparent bg-orange-500 text-white dark:bg-orange-500",
-  Info: "border-transparent bg-blue-600 text-white dark:bg-blue-500",
+  Critical: "border-transparent bg-crit-soft text-crit",
+  Warning: "border-transparent bg-warn-soft text-warn",
+  Info: "border-transparent bg-info-soft text-info",
 };
 
 export function SeverityBadge({ severity }: { severity: string }) {
   const style = SEVERITY_STYLES[severity];
   return (
-    <Badge className={cn(style ?? "border-transparent bg-muted text-muted-foreground")}>
+    <Badge className={cn("font-bold", style ?? "border-transparent bg-muted text-muted-foreground")}>
       {severity}
     </Badge>
   );
 }
 
+/** Bar-cell colors for severity dimensions — theme tokens, not hexes,
+ *  so they track the dark/light toggle. */
 export function severityColor(severity: string): string {
   switch (severity) {
     case "Critical":
-      return "#dc2626";
+      return "var(--crit)";
     case "Warning":
-      return "#f97316";
+      return "var(--warn)";
     case "Info":
-      return "#2563eb";
+      return "var(--info)";
     default:
-      return "#898781";
+      return "var(--fg-subtle)";
   }
 }

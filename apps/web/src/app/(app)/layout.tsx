@@ -1,10 +1,10 @@
-import { Nav } from "@/components/nav";
+import { Sidebar } from "@/components/sidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen">
-      <Nav />
-      <main className="mx-auto max-w-[1600px] p-4">{children}</main>
+    <div className="flex h-screen w-full overflow-hidden">
+      <Sidebar />
+      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
     </div>
   );
 }

@@ -1,15 +1,10 @@
 "use client"
 
-import {
-  CircleCheckIcon,
-  InfoIcon,
-  Loader2Icon,
-  OctagonXIcon,
-  TriangleAlertIcon,
-} from "lucide-react"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
+/** Bottom-center inverted pill per the design mock — no per-type icons,
+ *  errors switch to the critical color via globals.css. */
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
 
@@ -17,19 +12,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+      position="bottom-center"
+      toastOptions={{
+        className: "justify-center font-bold",
+        style: {
+          width: "fit-content",
+          marginInline: "auto",
+          padding: "11px 20px",
+          fontSize: "13px",
+        },
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--normal-bg": "var(--foreground)",
+          "--normal-text": "var(--background)",
+          "--normal-border": "transparent",
+          "--border-radius": "11px",
         } as React.CSSProperties
       }
       {...props}
