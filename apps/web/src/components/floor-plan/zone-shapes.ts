@@ -1,44 +1,73 @@
 /**
- * Parametric per-floor room layout, keyed "BLD-XXX:floor". Draws exactly
- * the zones present in that floor's occupancy data (the verified matrix:
- * BLD-001 F2 is the only 3-zone floor; every other floor has A and B) —
- * never a zone the data doesn't have. Room labels (Open Workspace,
- * Meeting Room, Server Room) are cosmetic flavor for the real zones;
- * "Reception" is a decorative, non-interactive strip near the entrance
- * with no occupancy binding, since there's no seed data for a lobby zone
- * and inventing numbers for it would be dishonest.
+ * Parametric per-floor layout, keyed "BLD-XXX:floor", geometry traced
+ * from the design mock's fpLayouts. Draws exactly the zones present in
+ * that floor's occupancy data (the verified matrix: BLD-001 F2 is the
+ * only 3-zone floor; every other floor has A and B) — never a zone the
+ * data doesn't have. "CORE"/"RECEPTION"/"LOBBY" are decorative,
+ * non-interactive architectural strips with no occupancy binding, since
+ * there's no seed data for them and inventing numbers would be dishonest.
  */
 export interface ZoneRect {
   readonly x: number;
   readonly y: number;
   readonly w: number;
   readonly h: number;
-  readonly roomLabel: string;
 }
 
-export const FLOOR_PLAN_VIEWBOX = { width: 420, height: 300 };
+export interface RoomRect extends ZoneRect {
+  readonly label: string;
+}
 
-const TWO_ZONE_LAYOUT: Record<string, ZoneRect> = {
-  "Zone-A": { x: 20, y: 50, w: 240, h: 230, roomLabel: "Open Workspace" },
-  "Zone-B": { x: 280, y: 50, w: 120, h: 230, roomLabel: "Meeting Room" },
-};
+export interface FloorLayout {
+  readonly zones: Readonly<Record<string, ZoneRect>>;
+  readonly rooms: ReadonlyArray<RoomRect>;
+}
 
-const THREE_ZONE_LAYOUT: Record<string, ZoneRect> = {
-  "Zone-A": { x: 20, y: 50, w: 240, h: 230, roomLabel: "Open Workspace" },
-  "Zone-B": { x: 280, y: 50, w: 120, h: 105, roomLabel: "Meeting Room" },
-  "Zone-C": { x: 280, y: 175, w: 120, h: 105, roomLabel: "Server Room" },
-};
+export const FLOOR_PLAN_VIEWBOX = { width: 1000, height: 560 };
+/** The building shell every layout sits inside. */
+export const FLOOR_PLAN_OUTLINE = { x: 30, y: 40, w: 940, h: 500 };
 
-export const ZONE_SHAPES: Record<string, Record<string, ZoneRect>> = {
-  "BLD-001:1": TWO_ZONE_LAYOUT,
-  "BLD-001:2": THREE_ZONE_LAYOUT,
-  "BLD-002:1": TWO_ZONE_LAYOUT,
-  "BLD-002:2": TWO_ZONE_LAYOUT,
+export const FLOOR_LAYOUTS: Record<string, FloorLayout> = {
+  "BLD-001:1": {
+    zones: {
+      "Zone-A": { x: 60, y: 70, w: 470, h: 400 },
+      "Zone-B": { x: 620, y: 70, w: 320, h: 400 },
+    },
+    rooms: [
+      { x: 545, y: 70, w: 65, h: 400, label: "CORE" },
+      { x: 60, y: 485, w: 880, h: 52, label: "RECEPTION" },
+    ],
+  },
+  "BLD-001:2": {
+    zones: {
+      "Zone-A": { x: 60, y: 70, w: 400, h: 250 },
+      "Zone-B": { x: 540, y: 70, w: 400, h: 250 },
+      "Zone-C": { x: 60, y: 335, w: 880, h: 200 },
+    },
+    rooms: [{ x: 470, y: 70, w: 60, h: 250, label: "CORE" }],
+  },
+  "BLD-002:1": {
+    zones: {
+      "Zone-A": { x: 60, y: 70, w: 400, h: 400 },
+      "Zone-B": { x: 540, y: 70, w: 400, h: 400 },
+    },
+    rooms: [
+      { x: 470, y: 70, w: 60, h: 400, label: "CORE" },
+      { x: 60, y: 485, w: 880, h: 52, label: "LOBBY" },
+    ],
+  },
+  "BLD-002:2": {
+    zones: {
+      "Zone-A": { x: 60, y: 70, w: 430, h: 400 },
+      "Zone-B": { x: 570, y: 70, w: 370, h: 400 },
+    },
+    rooms: [{ x: 500, y: 70, w: 60, h: 400, label: "CORE" }],
+  },
 };
 
 export const BUILDING_FLOOR_TABS = [
-  { buildingId: "BLD-001", floor: 1, label: "BLD-001 · Floor 1" },
-  { buildingId: "BLD-001", floor: 2, label: "BLD-001 · Floor 2" },
-  { buildingId: "BLD-002", floor: 1, label: "BLD-002 · Floor 1" },
-  { buildingId: "BLD-002", floor: 2, label: "BLD-002 · Floor 2" },
+  { buildingId: "BLD-001", floor: 1, label: "BLD-001 · F1" },
+  { buildingId: "BLD-001", floor: 2, label: "BLD-001 · F2" },
+  { buildingId: "BLD-002", floor: 1, label: "BLD-002 · F1" },
+  { buildingId: "BLD-002", floor: 2, label: "BLD-002 · F2" },
 ] as const;

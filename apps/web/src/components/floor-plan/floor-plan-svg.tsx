@@ -1,58 +1,85 @@
 "use client";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import type { ZoneOccupancy } from "@bms/contract";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useOccupancyLatest } from "@/hooks/use-occupancy-latest";
 import { occupancyFill } from "./occupancy-color";
-import { FLOOR_PLAN_VIEWBOX, ZONE_SHAPES } from "./zone-shapes";
+import {
+  FLOOR_LAYOUTS,
+  FLOOR_PLAN_OUTLINE,
+  FLOOR_PLAN_VIEWBOX,
+} from "./zone-shapes";
 import { ZoneTooltipBody } from "./zone-tooltip-body";
 
-export function FloorPlanSvg({ buildingId, floor }: { buildingId: string; floor: number }) {
-  const { data, isPending, isError } = useOccupancyLatest(buildingId, floor);
-  const shapes = ZONE_SHAPES[`${buildingId}:${floor}`] ?? {};
-  const zonesByName = new Map((data?.zones ?? []).map((z) => [z.zone, z]));
+const MONO = "var(--font-plex-mono), ui-monospace, monospace";
 
-  if (isPending) {
-    return <Skeleton className="aspect-[7/5] w-full max-w-2xl" />;
-  }
-  if (isError) {
-    return (
-      <p className="text-destructive text-sm">
-        Failed to load occupancy data for {buildingId} floor {floor}.
-      </p>
-    );
-  }
+export function FloorPlanSvg({
+  buildingId,
+  floor,
+  zones,
+}: {
+  buildingId: string;
+  floor: number;
+  zones: ReadonlyArray<ZoneOccupancy>;
+}) {
+  const layout = FLOOR_LAYOUTS[`${buildingId}:${floor}`];
+  if (!layout) return null;
+  const zonesByName = new Map(zones.map((z) => [z.zone, z]));
+  const outline = FLOOR_PLAN_OUTLINE;
 
   return (
     <svg
       viewBox={`0 0 ${FLOOR_PLAN_VIEWBOX.width} ${FLOOR_PLAN_VIEWBOX.height}`}
-      className="w-full max-w-2xl rounded-lg border bg-card"
+      preserveAspectRatio="xMidYMid meet"
+      className="block h-auto max-h-[60vh] w-full"
       role="img"
       aria-label={`Floor plan for ${buildingId} floor ${floor}`}
     >
       <rect
-        x={20}
-        y={10}
-        width={380}
-        height={30}
-        rx={4}
-        className="fill-muted stroke-border"
-        strokeWidth={1}
+        x={outline.x}
+        y={outline.y}
+        width={outline.w}
+        height={outline.h}
+        rx={16}
+        fill="var(--secondary)"
+        stroke="var(--border-strong)"
+        strokeWidth={2}
       />
-      <text
-        x={210}
-        y={29}
-        textAnchor="middle"
-        className="fill-muted-foreground text-[10px] uppercase"
-        style={{ letterSpacing: "0.08em" }}
-      >
-        Reception
-      </text>
 
-      {Object.entries(shapes).map(([zoneName, rect]) => {
+      {layout.rooms.map((room) => (
+        <g key={room.label + room.x}>
+          <rect
+            x={room.x}
+            y={room.y}
+            width={room.w}
+            height={room.h}
+            rx={8}
+            fill="var(--surface-3)"
+            stroke="var(--border)"
+            strokeWidth={1.5}
+            strokeDasharray="4 5"
+          />
+          <text
+            x={room.x + room.w / 2}
+            y={room.y + room.h / 2 + 5}
+            textAnchor="middle"
+            style={{
+              fontSize: 15,
+              fill: "var(--fg-subtle)",
+              letterSpacing: "1.5px",
+              fontFamily: MONO,
+            }}
+          >
+            {room.label}
+          </text>
+        </g>
+      ))}
+
+      {Object.entries(layout.zones).map(([zoneName, rect]) => {
         const zone = zonesByName.get(zoneName);
-        const fill = zone ? occupancyFill(zone.occupancyRatePercent, zone.isStale) : "#e5e5e5";
-        const textStyle = { paintOrder: "stroke" as const, stroke: "rgba(0,0,0,0.35)", strokeWidth: 3 };
+        const stale = zone?.isStale ?? true;
+        const fill = zone ? occupancyFill(zone.occupancyRatePercent, zone.isStale) : "var(--occ-stale)";
+        const cx = rect.x + rect.w / 2;
+        const cy = rect.y + rect.h / 2;
 
         return (
           <Tooltip key={zoneName}>
@@ -63,41 +90,89 @@ export function FloorPlanSvg({ buildingId, floor }: { buildingId: string; floor:
                   y={rect.y}
                   width={rect.w}
                   height={rect.h}
-                  rx={6}
+                  rx={12}
                   fill={fill}
-                  className="stroke-border transition-opacity hover:opacity-85"
-                  strokeWidth={1.5}
+                  stroke={fill}
+                  strokeWidth={2}
+                  opacity={stale ? 0.45 : 0.92}
+                  style={{ transition: "opacity .3s, fill .3s" }}
+                />
+                <rect
+                  x={rect.x}
+                  y={rect.y}
+                  width={rect.w}
+                  height={rect.h}
+                  rx={12}
+                  fill="none"
+                  stroke="rgba(255,255,255,.14)"
+                  strokeWidth={1}
                 />
                 <text
-                  x={rect.x + rect.w / 2}
-                  y={rect.y + 16}
-                  textAnchor="middle"
-                  className="fill-white text-[9px] uppercase"
-                  style={textStyle}
-                >
-                  {rect.roomLabel}
-                </text>
-                <text
-                  x={rect.x + rect.w / 2}
-                  y={rect.y + rect.h / 2}
-                  textAnchor="middle"
-                  className="fill-white font-semibold text-sm"
-                  style={textStyle}
+                  x={rect.x + 18}
+                  y={rect.y + 31}
+                  style={{ fontSize: 17, fontWeight: 700, fill: "#fff" }}
                 >
                   {zoneName}
                 </text>
-                <text
-                  x={rect.x + rect.w / 2}
-                  y={rect.y + rect.h / 2 + 18}
-                  textAnchor="middle"
-                  className="fill-white text-[11px]"
-                  style={textStyle}
-                >
-                  {zone && !zone.isStale ? `${zone.personCount} people` : "No data"}
-                </text>
+                {!zone ? (
+                  <text
+                    x={cx}
+                    y={cy + 6}
+                    textAnchor="middle"
+                    style={{ fontSize: 17, fill: "#fff", opacity: 0.92 }}
+                  >
+                    No data
+                  </text>
+                ) : (
+                  <g>
+                    <text
+                      x={cx}
+                      y={cy}
+                      textAnchor="middle"
+                      style={{
+                        fontSize: 42,
+                        fontWeight: 700,
+                        fill: "#fff",
+                        fontFamily: MONO,
+                        filter: "drop-shadow(0 1px 2px rgba(0,0,0,.35))",
+                      }}
+                    >
+                      {zone.isStale ? "—" : String(zone.personCount)}
+                    </text>
+                    <text
+                      x={cx}
+                      y={cy + 24}
+                      textAnchor="middle"
+                      style={{ fontSize: 14, fill: "rgba(255,255,255,.92)" }}
+                    >
+                      {zone.isStale
+                        ? "stale >1h"
+                        : `of ${zone.zoneCapacity} · ${zone.occupancyRatePercent.toFixed(1)}%`}
+                    </text>
+                  </g>
+                )}
+                {stale && (
+                  <text
+                    x={rect.x + rect.w - 16}
+                    y={rect.y + 27}
+                    textAnchor="end"
+                    style={{ fontSize: 15, fill: "#fff", opacity: 0.85 }}
+                  >
+                    ⚠
+                  </text>
+                )}
               </g>
             </TooltipTrigger>
-            <TooltipContent>{zone ? <ZoneTooltipBody zone={zone} /> : <p>No data</p>}</TooltipContent>
+            <TooltipContent
+              showArrow={false}
+              className="rounded-xl border border-border-strong bg-popover px-3.5 py-3 text-popover-foreground shadow-[0_16px_40px_-12px_rgba(0,0,0,.6)]"
+            >
+              {zone ? (
+                <ZoneTooltipBody zone={zone} />
+              ) : (
+                <p className="text-[12px] text-muted-foreground">No data for this zone</p>
+              )}
+            </TooltipContent>
           </Tooltip>
         );
       })}
