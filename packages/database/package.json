@@ -1,0 +1,28 @@
+{
+  "name": "@bms/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "seed": "bun run src/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/adapter-mssql": "7.8.0",
+    "@prisma/client": "7.8.0",
+    "papaparse": "^5.5.4"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.2",
+    "@types/papaparse": "^5.3.16",
+    "dotenv": "^17.4.2",
+    "prisma": "7.8.0",
+    "typescript": "^5.7.3"
+  }
+}

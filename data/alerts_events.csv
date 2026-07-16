@@ -1,0 +1,21 @@
+timestamp,building_id,floor,zone,alert_id,severity,category,device_id,alarm_type,description,value,threshold,unit,duration_minutes,resolved_at,status,acknowledged_by
+2025-06-01 02:15:00,BLD-001,2,Zone-C,ALT-0001,Warning,Environmental,CRAC-A2-01,HighTemperature,Server room temperature exceeded threshold,19.5,18.5,degC,25,2025-06-01 02:40:00,Resolved,John
+2025-06-01 03:22:00,BLD-002,2,Zone-A,ALT-0002,Info,Equipment,AHU-B2-01,FilterReplacement,HVAC filter approaching end of life,64,60,percent,0,,Active,Maria
+2025-06-01 05:45:00,BLD-001,1,Zone-A,ALT-0003,Critical,Security,SEC-A1-01,AccessDenied,Unauthorized access attempt detected,3,0,attempts,8,2025-06-01 05:53:00,Resolved,Security
+2025-06-01 07:30:00,BLD-001,2,Zone-A,ALT-0004,Warning,Energy,HVAC-A2-01,HighConsumption,HVAC energy consumption above normal,62.4,55.0,kWh,120,2025-06-01 09:30:00,Resolved,Ops
+2025-06-01 08:05:00,BLD-002,1,Zone-A,ALT-0005,Warning,Environmental,AHU-B1-01,HighCO2,CO2 levels in zone exceeded 800ppm,820,800,ppm,45,2025-06-01 08:50:00,Resolved,Ops
+2025-06-01 08:30:00,BLD-001,1,Zone-B,ALT-0006,Info,Equipment,UPS-A1-01,BatteryCheck,UPS battery self-test scheduled,95,90,percent,5,,Active,John
+2025-06-01 09:12:00,BLD-002,1,Zone-B,ALT-0007,Warning,Lighting,LGT-B1-01,BulbFailure,Lighting zone below minimum lux,180,250,lux,30,2025-06-01 09:42:00,Resolved,Maria
+2025-06-01 10:00:00,BLD-001,2,Zone-B,ALT-0008,Info,Occupancy,OCC-A2-B1,HighOccupancy,Zone occupancy exceeding 85% capacity,88,85,percent,0,,Active,Ops
+2025-06-01 11:45:00,BLD-001,1,Zone-A,ALT-0009,Critical,Energy,ELEC-A1-01,PowerSpike,Sudden power consumption spike detected,32.5,25.0,kW,3,2025-06-01 11:48:00,Resolved,John
+2025-06-01 12:15:00,BLD-002,2,Zone-A,ALT-0010,Warning,Environmental,AHU-B2-01,HighHumidity,Humidity level above comfort zone,78,70,percent,60,2025-06-01 13:15:00,Resolved,Ops
+2025-06-01 13:30:00,BLD-001,2,Zone-C,ALT-0011,Critical,Environmental,CRAC-A2-01,CompressorFault,CRAC unit compressor fault detected,0,0,status,15,2025-06-01 13:45:00,Resolved,John
+2025-06-01 14:00:00,BLD-002,1,Zone-A,ALT-0012,Warning,Fire,FIRE-B1-01,SmokeDetected,Low-level smoke detection in zone,0.05,0.02,obs/m,2,2025-06-01 14:02:00,Resolved,Security
+2025-06-01 15:20:00,BLD-001,2,Zone-A,ALT-0013,Info,Energy,LGT-A2-01,ScheduleDeviation,Lighting schedule deviation detected,0,0,min,0,,Active,Ops
+2025-06-01 16:00:00,BLD-002,2,Zone-B,ALT-0014,Warning,Equipment,ELEV-B2-01,MaintenanceDue,Elevator maintenance overdue by 500 cycles,15200,15000,cycles,0,,Active,Maria
+2025-06-01 17:30:00,BLD-001,1,Zone-A,ALT-0015,Info,Security,SEC-A1-01,AfterHoursAccess,After-hours access request logged,1,0,requests,0,,Active,Security
+2025-06-01 18:45:00,BLD-002,1,Zone-A,ALT-0016,Warning,Environmental,AHU-B1-01,LowAirflow,Airflow below minimum threshold,1800,2000,m3h,20,2025-06-01 19:05:00,Resolved,Ops
+2025-06-01 19:00:00,BLD-001,2,Zone-C,ALT-0017,Critical,Energy,ELEC-A2-SR,UPSOverload,Server room UPS approaching overload,92,90,percent,5,2025-06-01 19:05:00,Resolved,John
+2025-06-01 20:15:00,BLD-002,2,Zone-A,ALT-0018,Info,Occupancy,OCC-B2-A1,AfterHours,Occupants detected after business hours,8,0,persons,0,,Active,Ops
+2025-06-01 21:00:00,BLD-001,1,Zone-A,ALT-0019,Warning,Energy,HVAC-A1-01,NightModeDeviation,HVAC running in full mode after hours,43.5,30.0,kWh,120,,Open,Ops
+2025-06-01 22:30:00,BLD-002,1,Zone-B,ALT-0020,Info,Equipment,LGT-B1-01,ScheduleDeviation,Lights still on after scheduled off time,0,0,min,45,,Open,Maria

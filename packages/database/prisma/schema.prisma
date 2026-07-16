@@ -1,0 +1,103 @@
+// Derived from the actual CSVs in data/ (profiled, not transcribed from
+// data/DATA_DICTIONARY.md — the two disagree in places, e.g. `category`
+// includes "Lighting" in the data but not the dictionary). Categorical
+// columns are modeled as plain String, never a DB enum, so an
+// undocumented-but-real value like that doesn't break ingestion; filter
+// dropdowns source their options from live `distinct` queries instead of
+// a hardcoded list. `resolvedAt` is the only nullable column in the
+// entire schema (9 of 20 alerts_events rows).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+  runtime  = "bun"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model EnergyConsumption {
+  id           Int      @id @default(autoincrement())
+  timestamp    DateTime
+  buildingId   String   @map("building_id")
+  floor        Int
+  zone         String
+  deviceType   String   @map("device_type")
+  deviceId     String   @map("device_id")
+  energyKwh    Float    @map("energy_kwh")
+  powerKw      Float    @map("power_kw")
+  voltageV     Float    @map("voltage_v")
+  currentA     Float    @map("current_a")
+  powerFactor  Float    @map("power_factor")
+  costUsd      Float    @map("cost_usd")
+  sourceSystem String   @map("source_system")
+
+  @@index([buildingId, timestamp])
+  @@map("energy_consumption")
+}
+
+model HvacPerformance {
+  id                    Int      @id @default(autoincrement())
+  timestamp             DateTime
+  buildingId            String   @map("building_id")
+  floor                 Int
+  zone                  String
+  unitId                String   @map("unit_id")
+  mode                  String
+  setpointTempC         Float    @map("setpoint_temp_c")
+  actualTempC           Float    @map("actual_temp_c")
+  outdoorTempC          Float    @map("outdoor_temp_c")
+  humidityPercent       Float    @map("humidity_percent")
+  airflowM3h            Float    @map("airflow_m3h")
+  filterStatusPercent   Float    @map("filter_status_percent")
+  compressorHours       Float    @map("compressor_hours")
+  energyEfficiencyRatio Float    @map("energy_efficiency_ratio")
+  operatingStatus       String   @map("operating_status")
+
+  @@index([buildingId, timestamp])
+  @@map("hvac_performance")
+}
+
+model Occupancy {
+  id                   Int      @id @default(autoincrement())
+  timestamp            DateTime
+  buildingId           String   @map("building_id")
+  floor                Int
+  zone                 String
+  zoneCapacity         Int      @map("zone_capacity")
+  personCount          Int      @map("person_count")
+  occupancyRatePercent Float    @map("occupancy_rate_percent")
+  co2Ppm               Int      @map("co2_ppm")
+  temperatureC         Float    @map("temperature_c")
+  humidityPercent      Float    @map("humidity_percent")
+  airQualityIndex      Int      @map("air_quality_index")
+  entryCount           Int      @map("entry_count")
+  exitCount            Int      @map("exit_count")
+
+  @@index([buildingId, floor, timestamp])
+  @@map("occupancy")
+}
+
+model AlertsEvents {
+  alertId         String    @id @map("alert_id")
+  timestamp       DateTime
+  buildingId      String    @map("building_id")
+  floor           Int
+  zone            String
+  severity        String
+  category        String
+  deviceId        String    @map("device_id")
+  alarmType       String    @map("alarm_type")
+  description     String
+  value           Float
+  threshold       Float
+  unit            String
+  durationMinutes Int       @map("duration_minutes")
+  resolvedAt      DateTime? @map("resolved_at")
+  status          String
+  acknowledgedBy  String    @map("acknowledged_by")
+
+  @@index([buildingId, timestamp])
+  @@map("alerts_events")
+}
