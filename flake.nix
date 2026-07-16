@@ -1,5 +1,5 @@
 {
-  description = "venturesea take-home scaffold";
+  description = "bms-dashboard take-home devshell";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -15,14 +15,7 @@
       devShells = forAllSystems (
         system:
         let
-          pkgs = import nixpkgs {
-            inherit system;
-            # TimescaleDB Community Edition is TSL-licensed ("unfree" by
-            # nixpkgs' classification). Scoped to just this project's
-            # nixpkgs instantiation, not the user's global config.
-            config.allowUnfreePredicate =
-              pkg: builtins.elem (nixpkgs.lib.getName pkg) [ "timescaledb" ];
-          };
+          pkgs = import nixpkgs { inherit system; };
         in
         {
           default = pkgs.callPackage ./devshell.nix { };

@@ -1,5 +1,5 @@
 {
-  "name": "venturesea",
+  "name": "bms-dashboard",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -10,8 +10,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "db:migrate": "bun run --cwd packages/data migrate",
-    "db:seed": "bun run --cwd packages/data seed"
+    "db:migrate": "bun run --cwd packages/database migrate",
+    "db:seed": "bun run --cwd packages/database seed",
+    "db:generate": "bun run --cwd packages/database generate"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
