@@ -5,15 +5,17 @@ import { KpiCard } from "@/components/dashboard/cards/kpi-card";
 import { LineCard } from "@/components/dashboard/cards/line-card";
 
 export function CardRenderer({
+  cardId,
   config,
   data,
 }: {
+  cardId: string;
   config: CardConfig;
   data: QueryResponse;
 }) {
   switch (config.cardType) {
     case "kpi":
-      return <KpiCard config={config} data={data} />;
+      return <KpiCard cardId={cardId} config={config} data={data} />;
     case "bar":
       return <BarCard config={config} data={data} />;
     case "line":

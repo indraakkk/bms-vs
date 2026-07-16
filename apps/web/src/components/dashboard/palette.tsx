@@ -1,42 +1,78 @@
 "use client";
 
 import type { CardType } from "@bms/contract";
-import { ActivityIcon, BarChart3Icon, GaugeIcon, HashIcon } from "lucide-react";
-import { CARD_TYPE_LABEL } from "@/lib/card-defaults";
+import { CARD_TYPE_ICON } from "@/components/icons";
+import { useMounted } from "@/hooks/use-mounted";
+import { CARD_TYPE_DESC, CARD_TYPE_LABEL } from "@/lib/card-defaults";
 import { useDashboardStore } from "@/stores/dashboard-store";
 
-const PALETTE_ITEMS: Array<{ cardType: CardType; icon: React.ElementType }> = [
-  { cardType: "kpi", icon: HashIcon },
-  { cardType: "bar", icon: BarChart3Icon },
-  { cardType: "line", icon: ActivityIcon },
-  { cardType: "gauge", icon: GaugeIcon },
-];
+const PALETTE_ITEMS: CardType[] = ["kpi", "bar", "line", "gauge"];
 
-export function Palette() {
+export function Palette({ onCardAdded }: { onCardAdded: (cardId: string) => void }) {
+  const mounted = useMounted();
   const addCard = useDashboardStore((s) => s.addCard);
   const setDraggingCardType = useDashboardStore((s) => s.setDraggingCardType);
+  const loadSample = useDashboardStore((s) => s.loadSample);
+  const clearAll = useDashboardStore((s) => s.clearAll);
+  const hasCards = useDashboardStore((s) => s.cards.length > 0);
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {PALETTE_ITEMS.map(({ cardType, icon: Icon }) => (
+    <aside className="flex w-[232px] shrink-0 flex-col gap-[9px] overflow-auto border-r bg-card px-3.5 py-4">
+      <div className="mb-0.5">
+        <div className="font-bold text-[13px]">Card Palette</div>
+        <div className="mt-px text-[11.5px] text-fg-subtle">
+          Drag onto the canvas, or click to add
+        </div>
+      </div>
+
+      {PALETTE_ITEMS.map((cardType) => {
+        const Icon = CARD_TYPE_ICON[cardType];
+        return (
+          <button
+            key={cardType}
+            type="button"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("application/bms-card-type", cardType);
+              e.dataTransfer.effectAllowed = "copy";
+              setDraggingCardType(cardType);
+            }}
+            onDragEnd={() => setDraggingCardType(null)}
+            onClick={() => onCardAdded(addCard(cardType))}
+            className="flex cursor-grab items-start gap-[11px] rounded-xl border bg-secondary p-3 text-left transition-[transform,border-color] duration-100 hover:-translate-y-px hover:border-primary active:cursor-grabbing"
+            title={`Drag onto the grid, or click to add a ${CARD_TYPE_LABEL[cardType]}`}
+          >
+            <span className="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-accent text-primary">
+              <Icon size={15} />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-bold text-[13px]">{CARD_TYPE_LABEL[cardType]}</span>
+              <span className="mt-px block text-[11px] text-fg-subtle leading-[1.3]">
+                {CARD_TYPE_DESC[cardType]}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+
+      <div className="flex-1" />
+
+      <button
+        type="button"
+        onClick={loadSample}
+        className="flex items-center justify-center gap-[7px] rounded-[10px] border border-border-strong border-dashed bg-transparent p-[9px] font-semibold text-[12px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+      >
+        Load sample dashboard
+      </button>
+      {mounted && hasCards && (
         <button
-          key={cardType}
           type="button"
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.setData("application/bms-card-type", cardType);
-            e.dataTransfer.effectAllowed = "copy";
-            setDraggingCardType(cardType);
-          }}
-          onDragEnd={() => setDraggingCardType(null)}
-          onClick={() => addCard(cardType)}
-          className="flex cursor-grab items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm shadow-xs transition-colors hover:bg-accent active:cursor-grabbing"
-          title={`Drag onto the grid, or click to add a ${CARD_TYPE_LABEL[cardType]} card`}
+          onClick={clearAll}
+          className="p-2 font-semibold text-[12px] text-fg-subtle transition-colors hover:text-crit"
         >
-          <Icon className="size-4 text-muted-foreground" />
-          {CARD_TYPE_LABEL[cardType]}
+          Clear canvas
         </button>
-      ))}
-    </div>
+      )}
+    </aside>
   );
 }

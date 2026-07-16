@@ -3,6 +3,7 @@ import { verticalCompactor } from "react-grid-layout";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CARD_DEFAULT_SIZE, defaultCardTitle } from "@/lib/card-defaults";
+import { buildSampleDashboard } from "@/lib/sample-dashboard";
 
 const GRID_COLS = 12;
 
@@ -15,21 +16,44 @@ function compact(layout: GridLayoutItem[]): GridLayoutItem[] {
   ) as unknown as GridLayoutItem[];
 }
 
+/** Every card gets a layout slot: imported layouts may omit (or misname)
+ *  entries, so orphaned cards are appended at the bottom and compacted. */
+function reconcileLayout(
+  cards: ReadonlyArray<DashboardCard>,
+  layout: ReadonlyArray<GridLayoutItem>,
+): GridLayoutItem[] {
+  const byId = new Map(layout.map((l) => [l.i, l]));
+  let bottom = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+  const next = cards.map((card) => {
+    const existing = byId.get(card.id);
+    if (existing) return existing;
+    const size = CARD_DEFAULT_SIZE[card.cardType];
+    return { i: card.id, x: 0, y: bottom++, w: size.w, h: size.h };
+  });
+  return compact(next);
+}
+
 interface DashboardStoreState {
   cards: DashboardCard[];
   layout: GridLayoutItem[];
   /** Transient — not persisted. Which palette tile is being dragged, for the RGL ghost placeholder. */
   draggingCardType: CardType | null;
-  addCard: (cardType: CardType, position?: { x: number; y: number }) => void;
+  /** Returns the new card's id so callers can open its config modal immediately. */
+  addCard: (cardType: CardType, position?: { x: number; y: number }) => string;
+  duplicateCard: (id: string) => void;
   updateCard: (id: string, title: string, config: CardConfig) => void;
   removeCard: (id: string) => void;
+  clearAll: () => void;
+  /** Wholesale replace (layout import / sample dashboard). */
+  replaceState: (cards: ReadonlyArray<DashboardCard>, layout: ReadonlyArray<GridLayoutItem>) => void;
+  loadSample: () => void;
   setLayout: (layout: GridLayoutItem[]) => void;
   setDraggingCardType: (cardType: CardType | null) => void;
 }
 
 export const useDashboardStore = create<DashboardStoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       cards: [],
       layout: [],
       draggingCardType: null,
@@ -59,6 +83,30 @@ export const useDashboardStore = create<DashboardStoreState>()(
             layout,
           };
         });
+        return id;
+      },
+
+      duplicateCard: (id) => {
+        const { cards, layout } = get();
+        const source = cards.find((c) => c.id === id);
+        if (!source) return;
+        const sourceLayout = layout.find((l) => l.i === id);
+        const size = sourceLayout ?? { x: 0, y: 0, ...CARD_DEFAULT_SIZE[source.cardType] };
+        const newId = crypto.randomUUID();
+        const copy: DashboardCard = {
+          ...source,
+          id: newId,
+          title: `${source.title} (copy)`,
+        };
+        const index = cards.findIndex((c) => c.id === id);
+        set((state) => ({
+          cards: [...state.cards.slice(0, index + 1), copy, ...state.cards.slice(index + 1)],
+          layout: compact([
+            ...state.layout,
+            // Directly below the original; the compactor settles collisions.
+            { i: newId, x: size.x, y: size.y + size.h, w: size.w, h: size.h },
+          ]),
+        }));
       },
 
       updateCard: (id, title, config) => {
@@ -74,12 +122,40 @@ export const useDashboardStore = create<DashboardStoreState>()(
         }));
       },
 
+      clearAll: () => set({ cards: [], layout: [] }),
+
+      replaceState: (cards, layout) =>
+        set({ cards: [...cards], layout: reconcileLayout(cards, layout) }),
+
+      loadSample: () => {
+        const { cards, layout } = buildSampleDashboard();
+        set({ cards, layout: compact(layout) });
+      },
+
       setLayout: (layout) => set({ layout }),
       setDraggingCardType: (draggingCardType) => set({ draggingCardType }),
     }),
     {
       name: "bms-dashboard-state",
       partialize: (state) => ({ cards: state.cards, layout: state.layout }),
+      // v1: the design reskin changed the grid's row unit from 30px to
+      // 198px rows; rescale persisted v0 heights/positions (46px and
+      // 214px per row incl. margin) so old dashboards keep their shape.
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as { cards: DashboardCard[]; layout: GridLayoutItem[] };
+        if (version === 0 && Array.isArray(state.layout)) {
+          const scale = 46 / 214;
+          state.layout = compact(
+            state.layout.map((l) => ({
+              ...l,
+              y: Math.round(l.y * scale),
+              h: Math.max(1, Math.round(l.h * scale)),
+            })),
+          );
+        }
+        return state;
+      },
     },
   ),
 );

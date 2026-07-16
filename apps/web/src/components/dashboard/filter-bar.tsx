@@ -2,9 +2,7 @@
 
 import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { useMeta } from "@/hooks/use-meta";
-import { Button } from "@/components/ui/button";
+import { IconFunnel } from "@/components/icons";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -14,16 +12,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMeta } from "@/hooks/use-meta";
 import { cn } from "@/lib/utils";
 import { useFilterStore } from "@/stores/filter-store";
 
 const ALL = "__all__";
 
+/** Design order: All data · Today · 7 days · Custom (custom is the popover). */
 const PRESETS = [
-  { value: "today", label: "Today" },
-  { value: "last7d", label: "Last 7 days" },
   { value: "all", label: "All data" },
+  { value: "today", label: "Today" },
+  { value: "last7d", label: "7 days" },
 ] as const;
+
+/** Compact trigger matching the mock's surface-3 pill selects. */
+const SELECT_TRIGGER_CLASS =
+  "h-auto rounded-lg border-border bg-surface-3 px-3 py-[7px] font-semibold text-[12.5px] shadow-none dark:bg-surface-3 dark:hover:bg-surface-3";
 
 /**
  * The seed data is UTC-labeled calendar timestamps (see server/clock.ts),
@@ -52,25 +56,35 @@ export function FilterBar() {
   const filters = useFilterStore((s) => s.filters);
   const setFilters = useFilterStore((s) => s.setFilters);
 
-  const customRange: DateRange | undefined =
-    filters.timeRange.preset === "custom"
-      ? {
-          from: filters.timeRange.from
-            ? utcIsoToLocalCalendarDate(filters.timeRange.from)
-            : undefined,
-          to: filters.timeRange.to ? utcIsoToLocalCalendarDate(filters.timeRange.to) : undefined,
-        }
-      : undefined;
+  const customActive = filters.timeRange.preset === "custom";
+  const customRange: DateRange | undefined = customActive
+    ? {
+        from: filters.timeRange.from
+          ? utcIsoToLocalCalendarDate(filters.timeRange.from)
+          : undefined,
+        to: filters.timeRange.to ? utcIsoToLocalCalendarDate(filters.timeRange.to) : undefined,
+      }
+    : undefined;
+
+  const customLabel =
+    customActive && customRange?.from
+      ? customRange.to
+        ? `${format(customRange.from, "MMM d")} – ${format(customRange.to, "MMM d")}`
+        : format(customRange.from, "MMM d")
+      : "Custom";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2">
+    <div className="flex flex-wrap items-center gap-3 border-b bg-card px-[22px] py-[11px]">
+      <div className="flex items-center gap-[7px] font-semibold text-[12px] text-fg-subtle">
+        <IconFunnel size={15} />
+        Filters
+      </div>
+
       <Select
         value={filters.buildingId ?? ALL}
-        onValueChange={(v) =>
-          setFilters({ ...filters, buildingId: v === ALL ? undefined : v })
-        }
+        onValueChange={(v) => setFilters({ ...filters, buildingId: v === ALL ? undefined : v })}
       >
-        <SelectTrigger className="w-[160px]">
+        <SelectTrigger className={SELECT_TRIGGER_CLASS}>
           <SelectValue placeholder="Building" />
         </SelectTrigger>
         <SelectContent>
@@ -89,7 +103,7 @@ export function FilterBar() {
           setFilters({ ...filters, floor: v === ALL ? undefined : Number(v) })
         }
       >
-        <SelectTrigger className="w-[130px]">
+        <SelectTrigger className={SELECT_TRIGGER_CLASS}>
           <SelectValue placeholder="Floor" />
         </SelectTrigger>
         <SelectContent>
@@ -102,38 +116,27 @@ export function FilterBar() {
         </SelectContent>
       </Select>
 
-      <div className="mx-1 h-6 w-px bg-border" />
-
-      <div className="flex gap-1">
+      <div className="flex gap-0.5 rounded-[9px] border bg-surface-3 p-[3px]">
         {PRESETS.map((preset) => (
-          <Button
+          <SegmentButton
             key={preset.value}
-            size="sm"
-            variant={filters.timeRange.preset === preset.value ? "default" : "outline"}
+            active={filters.timeRange.preset === preset.value}
             onClick={() => setFilters({ ...filters, timeRange: { preset: preset.value } })}
           >
             {preset.label}
-          </Button>
+          </SegmentButton>
         ))}
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button
-              size="sm"
-              variant={filters.timeRange.preset === "custom" ? "default" : "outline"}
-              className={cn("gap-1.5")}
-            >
-              <CalendarIcon className="size-3.5" />
-              {filters.timeRange.preset === "custom" && customRange?.from
-                ? customRange.to
-                  ? `${format(customRange.from, "MMM d")} – ${format(customRange.to, "MMM d")}`
-                  : format(customRange.from, "MMM d")
-                : "Custom"}
-            </Button>
+            <SegmentButton active={customActive}>{customLabel}</SegmentButton>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               mode="range"
+              // Open on the seeded month (the "seed · 2025-06-01" chip on
+              // the right) instead of 13 months of back-paging from today.
+              defaultMonth={customRange?.from ?? new Date(2025, 5)}
               selected={customRange}
               onSelect={(range) => {
                 if (range?.from) {
@@ -154,6 +157,34 @@ export function FilterBar() {
           </PopoverContent>
         </Popover>
       </div>
+
+      <div className="flex-1" />
+      {/* The committed dataset is a single seeded day — surfaced here, as
+          in the mock, so an empty "Today" reads as honest, not broken. */}
+      <div className="font-mono text-[11.5px] text-fg-subtle">seed · 2025-06-01</div>
     </div>
+  );
+}
+
+function SegmentButton({
+  active,
+  onClick,
+  children,
+  ...props
+}: React.ComponentProps<"button"> & { active: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-[7px] px-[11px] py-1.5 font-semibold text-[12px] transition-colors",
+        active
+          ? "bg-card text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+      {...props}
+    >
+      {children}
+    </button>
   );
 }

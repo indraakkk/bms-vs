@@ -1,25 +1,23 @@
-/** Validated categorical palette (fixed order — never reassigned per render). */
-export const CATEGORICAL = [
-  "#2a78d6", // blue
-  "#1baf7a", // aqua
-  "#eda100", // yellow
-  "#008300", // green
-  "#4a3aa7", // violet
-  "#e34948", // red
-  "#e87ba4", // magenta
-  "#eb6834", // orange
-];
+/**
+ * Chart colors are theme tokens from the design mock (see globals.css):
+ * a monochrome series ramp (--c1…--c5, primary at descending opacity)
+ * plus reserved status colors. Everything is a CSS var so charts follow
+ * the dark/light toggle without re-rendering.
+ */
+export const SERIES_COLORS = [
+  "var(--c1)",
+  "var(--c2)",
+  "var(--c3)",
+  "var(--c4)",
+  "var(--c5)",
+] as const;
 
-export const STATUS = {
-  good: "#0ca30c",
-  warning: "#fab219",
-  serious: "#ec835a",
-  critical: "#d03b3b",
-};
-
-export const CHART_MUTED = "#898781";
-export const CHART_GRIDLINE = "#e1e0d9";
-
-export function categoricalColor(index: number): string {
-  return CATEGORICAL[index % CATEGORICAL.length];
+export function seriesColor(index: number): string {
+  return SERIES_COLORS[index % SERIES_COLORS.length];
 }
+
+export const CHART_GRID = "var(--grid)";
+export const CHART_TICK = "var(--fg-subtle)";
+/** The next/font variable itself — Tailwind's font-mono utility isn't
+ *  reachable from Recharts' inline SVG style objects. */
+export const CHART_MONO = "var(--font-plex-mono), ui-monospace, monospace";

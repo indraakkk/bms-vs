@@ -1,28 +1,26 @@
-import { type CardConfig, findColumn, type QueryResponse } from "@bms/contract";
-import { CHART_GRIDLINE, STATUS } from "@/components/dashboard/cards/chart-colors";
-import { formatNumber } from "@/components/dashboard/cards/chart-utils";
+import type { CardConfig, QueryResponse } from "@bms/contract";
+import { CHART_MONO } from "@/components/dashboard/cards/chart-colors";
+import { formatCompact } from "@/components/dashboard/cards/chart-utils";
+import { unitFor } from "@/lib/card-defaults";
 
-const CX = 100;
-const CY = 100;
-const R = 80;
+/** Geometry per the design mock: 230×150 semicircle, r=88, 14px stroke. */
+const W = 230;
+const H = 150;
+const CX = W / 2;
+const CY = H - 18;
+const R = 88;
 const STROKE = 14;
 
-function polarToCartesian(angleDeg: number) {
-  const angleRad = (angleDeg * Math.PI) / 180;
-  return { x: CX + R * Math.cos(angleRad), y: CY - R * Math.sin(angleRad) };
+/** fraction 0..1 → point on the semicircle (0 = left end, 1 = right end). */
+function pointAt(fraction: number, radius: number): [number, number] {
+  const angle = Math.PI * (1 - fraction);
+  return [CX + radius * Math.cos(angle), CY - radius * Math.sin(angle)];
 }
 
-function arcPath(startAngle: number, endAngle: number) {
-  const start = polarToCartesian(startAngle);
-  const end = polarToCartesian(endAngle);
-  const largeArcFlag = startAngle - endAngle > 180 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
-}
-
-/** min→max maps to 180°→0° (a left-to-right semicircle swept over the top). */
-function angleFor(value: number, min: number, max: number) {
-  const fraction = Math.min(1, Math.max(0, (value - min) / (max - min)));
-  return 180 - fraction * 180;
+function arcPath(from: number, to: number, radius: number): string {
+  const [x0, y0] = pointAt(from, radius);
+  const [x1, y1] = pointAt(to, radius);
+  return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${radius} ${radius} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
 }
 
 export function GaugeCard({
@@ -34,58 +32,86 @@ export function GaugeCard({
 }) {
   const value = data.rows[0]?.y ?? 0;
   const { min, max, target } = config;
-  const metricLabel = findColumn(config.source, config.metric)?.label ?? config.metric;
+  const unit = config.aggregation === "count" ? "" : unitFor(config.source, config.metric);
 
-  const distanceFromTarget = Math.abs(value - target) / (max - min || 1);
-  const valueColor =
-    distanceFromTarget <= 0.1
-      ? STATUS.good
-      : distanceFromTarget <= 0.25
-        ? STATUS.warning
-        : STATUS.critical;
+  const fractionOf = (v: number) =>
+    (Math.max(min, Math.min(max, v)) - min) / (max - min || 1);
+  const valueFraction = fractionOf(value);
+  const targetFraction = fractionOf(target);
 
-  const valueAngle = angleFor(value, min, max);
-  const targetAngle = angleFor(target, min, max);
-  const targetTick = {
-    inner: polarToCartesian(targetAngle),
-    outer: {
-      x: CX + (R + STROKE / 2 + 6) * Math.cos((targetAngle * Math.PI) / 180),
-      y: CY - (R + STROKE / 2 + 6) * Math.sin((targetAngle * Math.PI) / 180),
-    },
-  };
+  // Reached target → ok; within 70% of it → warn; otherwise neutral.
+  const arcColor =
+    valueFraction >= targetFraction
+      ? "var(--ok)"
+      : valueFraction >= targetFraction * 0.7
+        ? "var(--warn)"
+        : "var(--primary)";
+
+  const tickOuter = pointAt(targetFraction, R);
+  const tickInner = pointAt(targetFraction, R - 14);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center">
-      <svg viewBox="0 0 200 115" className="w-full max-w-[220px]">
-        <path
-          d={arcPath(180, 0)}
-          fill="none"
-          stroke={CHART_GRIDLINE}
-          strokeWidth={STROKE}
-          strokeLinecap="round"
-        />
-        <path
-          d={arcPath(180, valueAngle)}
-          fill="none"
-          stroke={valueColor}
-          strokeWidth={STROKE}
-          strokeLinecap="round"
-        />
-        <line
-          x1={targetTick.inner.x}
-          y1={targetTick.inner.y}
-          x2={targetTick.outer.x}
-          y2={targetTick.outer.y}
-          stroke="currentColor"
-          strokeWidth={2}
-        />
-        <text x={CX} y={CY - 4} textAnchor="middle" className="fill-foreground font-semibold text-2xl">
-          {formatNumber(value)}
-        </text>
-        <text x={CX} y={CY + 16} textAnchor="middle" className="fill-muted-foreground text-[10px] uppercase">
-          {config.aggregation} · {metricLabel}
-        </text>
-      </svg>
-    </div>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="block h-full w-full"
+      role="img"
+      aria-label={`Gauge: ${formatCompact(value)} of target ${formatCompact(target)}`}
+    >
+      <path
+        d={arcPath(0, 1, R)}
+        fill="none"
+        stroke="var(--surface-3)"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <path
+        d={arcPath(0, Math.max(0.001, valueFraction), R)}
+        fill="none"
+        stroke={arcColor}
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={tickInner[0]}
+        y1={tickInner[1]}
+        x2={tickOuter[0]}
+        y2={tickOuter[1]}
+        stroke="var(--foreground)"
+        strokeWidth={2}
+      />
+      <text
+        x={CX}
+        y={CY - 24}
+        textAnchor="middle"
+        style={{
+          fontSize: 30,
+          fontWeight: 600,
+          fill: "var(--foreground)",
+          fontFamily: CHART_MONO,
+        }}
+      >
+        {formatCompact(value)}
+      </text>
+      <text x={CX} y={CY - 8} textAnchor="middle" style={{ fontSize: 10, fill: "var(--fg-subtle)" }}>
+        {unit ? `${unit} · ` : ""}target {formatCompact(target)}
+      </text>
+      <text
+        x={pointAt(0, R)[0]}
+        y={CY + 14}
+        textAnchor="middle"
+        style={{ fontSize: 9, fill: "var(--fg-subtle)", fontFamily: CHART_MONO }}
+      >
+        {formatCompact(min)}
+      </text>
+      <text
+        x={pointAt(1, R)[0]}
+        y={CY + 14}
+        textAnchor="middle"
+        style={{ fontSize: 9, fill: "var(--fg-subtle)", fontFamily: CHART_MONO }}
+      >
+        {formatCompact(max)}
+      </text>
+    </svg>
   );
 }
