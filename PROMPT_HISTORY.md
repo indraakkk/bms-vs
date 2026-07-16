@@ -542,6 +542,167 @@ Required scope (P0–P7) is complete.
 
 ---
 
+## Phase P8 — Bonus: pixel-perfect implementation of the approved design mock
+
+**Prompt**: Via `/design-sync` + the `claude_design` MCP: import "VS BMS
+Dashboard.dc.html" from my claude.ai/design project ("Dashboard design
+with themes") and implement the dashboard design pixel-perfect — keep the
+project UI intact, don't ship the design's own code — as the bonus-point
+pass. Then update PROMPT_HISTORY.md.
+
+**Response summary**: Pulled the design file and its `dc-runtime`
+(`support.js`) through the DesignSync tool read-only (no writes to the
+design project), served both locally, and rendered the mock in a real
+browser as the visual reference to compare the app against screen by
+screen. Treated the `.dc.html` strictly as a *spec*: its fake seeded data
+layer, hand-rolled drag system, hour-select time filters, and simulated
+query delays were all discarded; every visual it defines was rebuilt on
+the app's real architecture (Effect services + `/api/query`, RGL v2,
+TanStack Query, shadcn primitives).
+
+What landed:
+
+- **Theme system**: the mock's dark/light THEMES map turned out to be
+  Tailwind v4's neutral oklch ramp — near-identical to the shadcn `.dark`
+  block already sitting unused in `globals.css`. Mapped design names onto
+  shadcn semantics (`bg→background`, `surface-1→card`,
+  `primary-soft→accent`, `crit→destructive`…), added design-only tokens
+  (`--surface-3`, `--fg-subtle`, `--occ-*`, chart ramp `--c1..--c5`,
+  `--grid`), and wired dark-default + sidebar toggle via `next-themes`
+  (already a transitive dependency). Fonts: Hanken Grotesk + IBM Plex
+  Mono via `next/font`. The mock's icons were re-authored as
+  `components/icons.tsx` from their exact SVG paths rather than
+  approximated with lucide.
+- **Shell**: top nav replaced by the mock's 238px sidebar (workspace nav,
+  live SYSTEM TIME card, Light/Dark + lock buttons, user chip); dashboard
+  and floor plan pages restructured to full-height console layouts with
+  their own headers.
+- **Dashboard**: header (card-count subtitle, Export/Import, Palette
+  toggle), filter bar (segmented presets in the mock's order, styled
+  selects, `seed · 2025-06-01` chip), collapsible 232px palette panel,
+  card chrome per the mock (grip handle, type-icon tile, config summary
+  line, Configure/Duplicate/Remove actions, shimmer loading state,
+  unconfigured/error/empty states, footer with **real** `rowCount` /
+  `executedInMs` from `QueryResponse.meta` + per-card filter chip). Grid
+  reconfigured to the mock's lattice (12 cols × 198px rows), cards drag
+  by header only.
+- **Charts to spec**: KPI = mono value + unit + trend-delta pill + area
+  sparkline; bar = monochrome `--c1` bars, ranked desc, top-12, value
+  labels, mono ticks; line = `--c1..--c5` series, area wash under the
+  first series, pinging end-dots, custom legend, UTC hour ticks; gauge =
+  the mock's exact 230×150/r88 geometry with target tick and
+  reached-target coloring.
+- **Floor plan**: mock's 1000×560 geometry (building shell + decorative
+  CORE/RECEPTION/LOBBY strips) over the same verified zone matrix, zone
+  summary + endpoint cards in a right rail, folder tabs, ticking
+  "Updated Ns ago" chip, tooltip re-laid-out as the mock's grid — all
+  still bound to live `/api/occupancy/latest`.
+- **Login**: keypad with 4 PIN dots, auto-submit on the 4th digit, shake
+  + error on wrong PIN, physical-keyboard input, demo-PIN hint and
+  "Enter demo workspace →" — same HMAC-session `POST /api/auth/login`
+  underneath, `from`-redirect sanitizer untouched.
+- **Design-driven features implemented for real** (not mock stubs):
+  export/import of the dashboard as JSON — imports are decoded against
+  the contract's `DashboardState` schema so a hand-edited file can't
+  smuggle in shapes the API would reject; a sample-dashboard loader whose
+  seven configs use real TABLE_META columns; card duplication; drop/click
+  adds now auto-open the config modal; blank titles auto-generate from
+  the config (mock behavior).
+
+Verified in the browser against the mock renders side by side (dark +
+light, dashboard empty/populated, floor plan, config modal, login) and
+functionally end to end: wrong-PIN shake → keypad login; click-to-add →
+auto-opened modal → configured a gauge against live MSSQL; header-drag
+and corner-resize on the new grid; duplicate; building filter narrowing
+(Sum Energy 2,237 → 1,367 kWh); custom UTC range (single-day pick =
+full-day total, the P7 fix still holds); "Today" under `DEMO_NOW`;
+export → clear → import round-trip (9 cards restored) plus invalid-file
+rejection; 1280px with zero horizontal overflow; palette collapse.
+`typecheck`, `lint`, and production `build` all clean.
+
+**My decision**:
+- Ran the design-sync skill *backwards* on purpose: it exists to upload
+  design systems to claude.ai/design, but the ask was an import, so only
+  its read methods were used (`get_project`/`list_files`/`get_file`) —
+  nothing was written to the design project.
+- "Keep the project UI intact, not design code" interpreted as: the mock
+  is a rendering target, the app's data flow is law. Concretely: kept the
+  real calendar range picker (the mock's from/to *hour* selects are a
+  prototype simplification of a required feature) restyled as the fourth
+  segment button, and defaulted the calendar to the seeded month; kept
+  free-text per-card filter values (the mock's distinct-value dropdowns
+  presume an endpoint `/api/meta` doesn't serve); kept the line chart's
+  x-axis as a real timestamp-column select rather than the mock's static
+  "Timestamp · hourly" chip, since `alertsEvents` genuinely offers two
+  timestamp columns.
+- Omitted the mock's "Simulate stale" header button: staleness is
+  computed server-side against `DEMO_NOW`/real time, and a client-side
+  override would fake data state on a page whose whole point is honest
+  live readings. `DEMO_NOW` (documented in README) already demos both
+  states.
+- KPI sparkline is a second, line-shaped query per KPI card through the
+  same validated query path — the honest equivalent of the mock's
+  client-side hour bucketing over fake rows, at the cost of one extra
+  request per KPI per filter change (cached under the same
+  `[cardId, config, filters]` key discipline as everything else).
+- Occupancy fill followed the mock's legend (low=neutral, medium=green,
+  high=red) rather than P5's green/amber/red; the thresholds are
+  unchanged and the hues live in `--occ-*` tokens, so reverting is a
+  token swap, not a code change — noted in the code comment.
+- Severity coloring (P7 polish) survives in the design's vocabulary:
+  Critical `--crit` red, Warning mono `--warn`, Info gray `--info` — red
+  stays reserved for Critical in both themes, which is also why the
+  dataviz skill wasn't re-run this phase: every chart color was already
+  fixed by the approved mock, leaving no palette decisions to make.
+- Bar charts adopted the mock's rank-desc + top-12 display; the footer's
+  true row count keeps the truncation discoverable.
+- Persisted dashboards from before the redesign aren't discarded: the
+  Zustand `persist` store bumped to `version: 1` with a migration that
+  rescales old 30px-row layouts into the 198px lattice and re-compacts.
+- The keypad hard-assumes the documented 4-digit demo PIN (auto-submit at
+  4 digits, like the mock); a non-4-digit `APP_PIN` would need the old
+  free-length input back. Accepted and documented as a demo trade-off.
+- This Next/ESLint setup (React-Compiler-era rules) rejects the classic
+  `setState`-in-effect mount/clock patterns; rather than disabling rules,
+  the mounted gate became `useSyncExternalStore` and clocks only set
+  state from timer callbacks.
+
+---
+
+## Post-P8 fix — free-length PIN input on the login page
+
+**Prompt**: The configured PIN is effectively unusable in auth — the PIN
+is a typed secret, not a phone-number-style code, and the design from the
+beginning was an openssl-generated 32-char secure PIN. Using `1234`
+stays granted for dev.
+
+**Response summary**: Reversed the P8 keypad trade-off (logged above:
+"the keypad hard-assumes the documented 4-digit demo PIN"). The login
+form's digit-only keypad, hardcoded `PIN_LENGTH = 4`, and 4th-digit
+auto-submit meant any `APP_PIN` that wasn't exactly four digits could
+never be entered. Replaced it with a typed, free-length password input
+(mono, centered, paste-friendly, Enter or "Unlock console" submits)
+inside the same P8 card shell — shake-on-error, `from`-redirect
+sanitizer, and the HMAC-session `POST /api/auth/login` flow all
+untouched. No server change was needed: `LoginRequest.pin` was already
+`Schema.String` and the compare was already constant-time and
+length-hiding, so the 4-digit assumption lived only in the client.
+
+**My decision**:
+- The dev conveniences (the "Dev PIN · 1 2 3 4" hint and the one-click
+  "Enter demo workspace →" button) were kept but gated to development
+  builds via `process.env.NODE_ENV` (statically inlined by Next, so
+  production bundles compile the block out) — a production build with a
+  secret `APP_PIN` gets a bare input instead of a hardcoded-credential
+  hint that would be wrong there anyway.
+- Documented `openssl rand -hex 16` as the 32-char generator in
+  `.env.example`, README's auth section, and CLAUDE.md (hex over base64:
+  same entropy per length, no `+/=` quoting/typing hazards in env files).
+- Dev default stays `1234` per the prompt — reviewer quickstart is
+  unchanged.
+
+---
+
 ## AI % vs. own-decision (running)
 
 | Phase | AI-authored | Owner-decided / overridden | Notes |
@@ -554,3 +715,5 @@ Required scope (P0–P7) is complete.
 | P5 | Zone shapes, floor plan SVG, tooltip, tabs, threshold coloring | Splitting the 3-zone floor's flavor rooms as Open Workspace/Meeting Room/Server Room rather than inventing a 4th data-less zone; verifying both the honest-empty (real clock) and populated (DEMO_NOW) states live before calling it done | First phase with no real bugs found in browser verification — the SVG/Radix Tooltip/TanStack Query pieces composed cleanly on the first pass, likely because P3/P4 had already worked out the shared patterns (hooks, palette, query keys) this phase reused |
 | P6 | session-token.ts, AuthService, login/logout routes, proxy.ts, login page | Discovering and adapting to the middleware→proxy rename by reading docs first rather than trusting the plan's filename; keeping the Proxy guard dependency-free instead of reusing the Effect-based AuthService; 24h session duration | The middleware→proxy rename is the single highest-value catch of the whole build — a plausible-looking `middleware.ts` would have silently done nothing in Next 16, and nothing short of reading the actual docs (not the plan, not training data) would have caught it before a reviewer noticed auth wasn't enforced |
 | P7 | SeverityBadge, toasts, README.md, ARCHITECTURE.md | Substituting `/code-review` + `/security-review` for the plan's unavailable "production-readiness-review" skill; fixing all 6 GATE findings (crash, 2 filter-coercion bugs, incomplete timezone fix, open redirect, gitignore gap) rather than deferring any; adding `dbType` as a new field instead of a special case | The highest-value phase for catching real defects after the fact — every GATE finding was invisible to typecheck/lint/build, and one (the timezone bug) was in code that had *already* passed its own phase's live browser verification, which is the strongest evidence in this whole build for why an end-of-build adversarial pass earns its cost even on already-tested code |
+| P8 | Theme tokens + next-themes wiring, sidebar shell, restyled dashboard/filter/palette/cards/modal/floor-plan/login, chart rebuilds, icons.tsx, export/import/sample/duplicate features, KPI spark hook, persist migration | Running design-sync's tooling in reverse (read-only import); mock-as-spec vs. app-as-law arbitration per feature (real calendar over hour selects, no "Simulate stale", no distinct-value dropdowns, real timestamp-column select); sparkline as a second real query instead of client-side fabrication; occupancy hues as swappable tokens; migrating old persisted layouts instead of discarding them; 4-digit keypad trade-off | The mock-render vs. app side-by-side loop caught exactly the class of gap a code-only pass would ship: singular/plural footer text, delta-pill spacing, bar ordering, lowercase aggregation labels — none of them errors, all of them visible. And the mock itself was load-bearing twice: its THEMES map matched the dormant shadcn `.dark` block already in globals.css, and its sample configs mapped 1:1 onto real TABLE_META columns, both signs the design was authored *from* this repo's own contract |
+| P8.1 (fix) | Free-length PIN login form; docs (.env.example, README, CLAUDE.md) | Reversing the P8 keypad trade-off in favor of the original openssl-secure-PIN design; gating the dev-PIN hint/demo button to development builds rather than deleting them; `openssl rand -hex 16` over base64 for the documented generator | The 4-digit assumption existed only client-side — the contract and AuthService had supported free-length PINs since P6, so the fix was a form swap plus docs, evidence that keeping validation/comparison server-side kept the design mistake shallow |

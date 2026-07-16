@@ -2,15 +2,16 @@
 
 import { API_PATHS } from "@bms/contract";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { BrandMark } from "@/components/sidebar";
 import { cn } from "@/lib/utils";
 
-/** The documented demo PIN (.env.example / README). The keypad is built
- *  around this 4-digit demo credential — auto-submitting on the 4th
- *  digit, exactly like the design mock. */
-const PIN_LENGTH = 4;
-const DEMO_PIN = "1234";
+/** Dev convenience only — the documented dev PIN (.env.example / README).
+ *  The hint and one-click button below render exclusively in development
+ *  builds; a real deployment sets `APP_PIN` to an openssl-generated
+ *  secret (e.g. `openssl rand -hex 16`, 32 chars) and gets a bare input. */
+const DEV_PIN = "1234";
+const IS_DEV = process.env.NODE_ENV === "development";
 
 /**
  * `from` is attacker-controllable (a phishing link can set
@@ -41,6 +42,7 @@ export function LoginForm() {
 
   const submit = useCallback(
     async (candidate: string) => {
+      if (!candidate || submitting) return;
       setSubmitting(true);
       setError(null);
       try {
@@ -63,40 +65,8 @@ export function LoginForm() {
         setSubmitting(false);
       }
     },
-    [router, searchParams],
+    [router, searchParams, submitting],
   );
-
-  const pressDigit = useCallback(
-    (digit: string) => {
-      if (submitting) return;
-      setError(null);
-      setPin((current) => {
-        if (current.length >= PIN_LENGTH) return current;
-        const next = current + digit;
-        if (next.length === PIN_LENGTH) {
-          // Let the 4th dot paint before the request fires, per the mock.
-          setTimeout(() => submit(next), 170);
-        }
-        return next;
-      });
-    },
-    [submitting, submit],
-  );
-
-  const pressBackspace = useCallback(() => {
-    setError(null);
-    setPin((current) => current.slice(0, -1));
-  }, []);
-
-  // Physical keyboards work too — digits and backspace.
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (/^[0-9]$/.test(e.key)) pressDigit(e.key);
-      else if (e.key === "Backspace") pressBackspace();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pressDigit, pressBackspace]);
 
   return (
     <div
@@ -112,37 +82,39 @@ export function LoginForm() {
         <div className="text-[12.5px] text-fg-subtle">Enter your access PIN to continue</div>
       </div>
 
-      <div className="mb-[22px] flex justify-center gap-[13px]" aria-label="PIN progress">
-        {Array.from({ length: PIN_LENGTH }, (_, i) => (
-          <span
-            key={i}
-            className={cn(
-              "size-3.5 rounded-full border-2 transition-all",
-              i < pin.length ? "border-primary bg-primary" : "border-border-strong bg-transparent",
-            )}
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-3 gap-2.5">
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
-          <KeypadButton key={digit} onClick={() => pressDigit(digit)} disabled={submitting}>
-            {digit}
-          </KeypadButton>
-        ))}
-        <KeypadButton
-          onClick={pressBackspace}
+      <form
+        className="flex flex-col gap-2.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit(pin);
+        }}
+      >
+        <label htmlFor="pin" className="sr-only">
+          Access PIN
+        </label>
+        <input
+          id="pin"
+          name="pin"
+          type="password"
+          autoFocus
+          autoComplete="current-password"
+          placeholder="Access PIN"
+          value={pin}
           disabled={submitting}
-          className="text-[16px] text-muted-foreground"
-          aria-label="Delete last digit"
+          onChange={(e) => {
+            setError(null);
+            setPin(e.target.value);
+          }}
+          className="w-full rounded-xl border bg-secondary px-4 py-[13px] text-center font-mono font-semibold text-[15px] tracking-[0.35em] outline-none transition-colors placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground focus:border-border-strong disabled:opacity-60"
+        />
+        <button
+          type="submit"
+          disabled={submitting || pin.length === 0}
+          className="w-full rounded-[11px] bg-primary py-[11px] font-bold text-[13.5px] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          ⌫
-        </KeypadButton>
-        <KeypadButton onClick={() => pressDigit("0")} disabled={submitting}>
-          0
-        </KeypadButton>
-        <span aria-hidden />
-      </div>
+          {submitting ? "Signing in…" : "Unlock console"}
+        </button>
+      </form>
 
       <div className="mt-[18px] flex flex-col items-center gap-[11px]">
         {error && (
@@ -150,34 +122,22 @@ export function LoginForm() {
             {error}
           </p>
         )}
-        <div className="font-mono text-[11.5px] text-fg-subtle">
-          Demo PIN · {DEMO_PIN.split("").join(" ")}
-        </div>
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={() => submit(DEMO_PIN)}
-          className="w-full rounded-[11px] bg-primary py-[11px] font-bold text-[13.5px] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          {submitting ? "Signing in…" : "Enter demo workspace →"}
-        </button>
+        {IS_DEV && (
+          <>
+            <div className="font-mono text-[11.5px] text-fg-subtle">
+              Dev PIN · {DEV_PIN.split("").join(" ")}
+            </div>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => submit(DEV_PIN)}
+              className="w-full rounded-[11px] border bg-secondary py-[11px] font-bold text-[13.5px] transition-colors hover:border-border-strong disabled:opacity-60"
+            >
+              Enter demo workspace →
+            </button>
+          </>
+        )}
       </div>
     </div>
-  );
-}
-
-function KeypadButton({
-  className,
-  ...props
-}: React.ComponentProps<"button">) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "rounded-xl border bg-secondary py-[15px] font-mono font-semibold text-[19px] transition-colors hover:border-border-strong active:bg-surface-3 disabled:opacity-60",
-        className,
-      )}
-      {...props}
-    />
   );
 }

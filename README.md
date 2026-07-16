@@ -13,7 +13,7 @@ profiled directly, not just read from the dictionary; see
 
 The UI implements an approved Claude Design mock ("VS BMS Dashboard",
 bonus pass): dark-first theme with a Light/Dark toggle in the sidebar,
-keypad login, and a sidebar console layout across the dashboard builder
+PIN login, and a sidebar console layout across the dashboard builder
 and floor plan. Functional extras that came with the design: export/import
 the dashboard as JSON (validated against the shared contract schema), a
 one-click sample dashboard, card duplication, KPI trend sparklines, and
@@ -56,7 +56,7 @@ Copy `.env.example` to `apps/web/.env` **and** `packages/database/.env`
 | Variable | Purpose | Default (docker-compose.yml) |
 |---|---|---|
 | `DATABASE_URL` | MSSQL connection string | `sqlserver://localhost:1433;database=bms;user=sa;password=BmsDashboard!2025;trustServerCertificate=true` |
-| `APP_PIN` | PIN for the login screen (see [Auth](#auth), below) | `1234` |
+| `APP_PIN` | PIN for the login screen — free-length; generate a real one with `openssl rand -hex 16` (see [Auth](#auth), below) | `1234` (dev) |
 | `AUTH_SECRET` | HMAC key signing the session cookie — generate with `openssl rand -base64 32` | — |
 | `DEMO_NOW` | Pins "now" for time-range presets and occupancy staleness (see [Demo data](#demo-data--demo_now), below) | unset (real time) |
 
@@ -64,9 +64,13 @@ Copy `.env.example` to `apps/web/.env` **and** `packages/database/.env`
 
 A PIN-gated login was **added beyond the take-home's spec** to demonstrate
 session handling — it is a demo scheme (one shared PIN, HMAC-signed
-cookie, no user accounts), not production auth. Default PIN is `1234`
-(`APP_PIN` above). Everything except `/login` and `/api/auth/*` requires
-a valid session; sessions last 24h.
+cookie, no user accounts), not production auth. The PIN is a typed,
+free-length secret (`APP_PIN` above), not a 4-digit code: set it to
+anything, e.g. a 32-char `openssl rand -hex 16` value — the server
+compares constant-time and doesn't leak length. The dev default is `1234`,
+and the login page's PIN hint + one-click demo button render **only in
+development builds**. Everything except `/login` and `/api/auth/*`
+requires a valid session; sessions last 24h.
 
 ## Demo data & `DEMO_NOW`
 

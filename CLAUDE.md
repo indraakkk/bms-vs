@@ -133,7 +133,11 @@ is a mechanical rename to v3 idioms (`Effect.Service`/`Context.Tag`,
 added beyond the take-home's spec to demonstrate session handling — a
 single shared PIN (`APP_PIN`), constant-time-compared, signing a
 `base64url(payload).base64url(hmacSha256(payload))` cookie (no JWT
-library) with `AUTH_SECRET`. `session-token.ts` holds the pure sign/verify
+library) with `AUTH_SECRET`. `APP_PIN` is a free-length string, not a
+4-digit code — dev default `1234`, real values via `openssl rand -hex 16`
+(32 chars) — so the login form is a typed password input (the dev-PIN
+hint and one-click demo button are development-build-only); don't
+reintroduce a fixed-length numeric keypad there. `session-token.ts` holds the pure sign/verify
 functions with no Effect dependency, shared between the Effect-wrapped
 `AuthService` (used by the login/logout routes) and the plain-function
 guard in `proxy.ts`, which stays dependency-free by design — Proxy runs
