@@ -17,10 +17,14 @@ reasoned through there.
 **Status**: required scope (plan phases P0–P7, through the "GATE") is
 complete — monorepo, data layer, contract + Effect services, dashboard
 builder UI, global filters, floor plan, PIN auth, and polish are all
-built and browser-verified. Bonuses (P8) and Track B (CI/deploy) are out
-of scope for this pass. Update this file's "Architecture" section if
-that changes — it should always describe what's actually in the tree,
-not just what's planned.
+built and browser-verified. A bonus P8 pass implemented the approved
+Claude Design mock ("VS BMS Dashboard.dc.html", project "Dashboard design
+with themes" on claude.ai/design) pixel-close on top of the existing
+architecture — see PROMPT_HISTORY.md's P8 entry for what was adopted vs.
+deliberately not (the mock is a *spec*; its throwaway prototype code was
+never imported). Track B (CI/deploy) remains out of scope. Update this
+file's "Architecture" section if that changes — it should always describe
+what's actually in the tree, not just what's planned.
 
 ## Dev environment (Nix-only for tooling; MSSQL via Docker)
 
@@ -149,7 +153,34 @@ dashboard canvas; new externally-added cards run through RGL's own
 auto-compact positions supplied from outside its own drag/resize reducer.
 The floor plan (`components/floor-plan/`) draws only the zones each
 floor's real occupancy data has (`zone-shapes.ts`'s verified matrix —
-`BLD-001` floor 2 is the only 3-zone floor), never a fabricated zone.
+`BLD-001` floor 2 is the only 3-zone floor), never a fabricated zone;
+its geometry (building shell, decorative CORE/RECEPTION/LOBBY strips)
+is traced from the design mock.
+
+**Theme/design layer** (bonus P8): the UI implements the approved Claude
+Design mock pixel-close. `globals.css` carries the mock's oklch token
+sets mapped onto shadcn semantics (design `bg/surface-1/surface-2/
+primary-soft/crit` → `background/card/secondary/accent/destructive`)
+plus design-only tokens (`--surface-3`, `--fg-subtle`, `--occ-*`
+occupancy ramp, `--c1..--c5` monochrome chart series ramp, `--grid`);
+dark is the default theme via `next-themes`, toggled from the sidebar.
+Fonts are Hanken Grotesk + IBM Plex Mono via `next/font`. Icons are the
+mock's own SVGs re-authored in `components/icons.tsx` — don't swap in
+lucide equivalents on design surfaces. Chart/status/occupancy colors are
+CSS vars only (never hexes) so both themes work; red stays reserved for
+Critical/high-occupancy. Design-driven *features* that are real, not
+cosmetic: dashboard export/import as JSON (decoded against the contract's
+`DashboardState` with `Schema.decodeUnknownSync` — this v4 beta has no
+`decodeUnknownEither`), sample-dashboard loader (`lib/sample-dashboard.ts`,
+real TABLE_META configs), card duplication, KPI sparkline+delta (a second,
+line-shaped query through the same validated `/api/query` path — see
+`hooks/use-kpi-spark.ts`), and query stats (`meta.rowCount`/`executedInMs`)
+in card footers. The grid is 12 cols × 198px rows (the mock's 4-col
+lattice ×3); `dashboard-store.ts` persists at `version: 1` with a
+migration rescaling pre-redesign 30px-row layouts. The mock's "Simulate
+stale" button and per-column distinct filter dropdowns were deliberately
+NOT implemented (client-side fake staleness would counterfeit server
+truth — `DEMO_NOW` covers that demo; no distinct-values endpoint exists).
 
 **Known limitation, not a bug**: the seed CSVs cover a single day
 (2025-06-01, hourly, last reading 22:00/22:30). "Today"/"last 7 days"

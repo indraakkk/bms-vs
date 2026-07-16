@@ -11,6 +11,14 @@ phase) and `data/DATA_DICTIONARY.md` / `data/*.csv` (the source data —
 profiled directly, not just read from the dictionary; see
 `ARCHITECTURE.md`'s schema section for where the two disagree).
 
+The UI implements an approved Claude Design mock ("VS BMS Dashboard",
+bonus pass): dark-first theme with a Light/Dark toggle in the sidebar,
+keypad login, and a sidebar console layout across the dashboard builder
+and floor plan. Functional extras that came with the design: export/import
+the dashboard as JSON (validated against the shared contract schema), a
+one-click sample dashboard, card duplication, KPI trend sparklines, and
+per-card query stats (row count · execution ms) in each card's footer.
+
 ## Quick start
 
 Requires [Docker](https://www.docker.com/) and either [Nix](https://nixos.org/)
