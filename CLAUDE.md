@@ -4,124 +4,171 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A turborepo scaffold (Next.js + Effect-ts + Postgres/TimescaleDB) modeling
-building sensor data (HVAC, electrical) for a CBD-skyscraper-scale smart
-buildings use case. See `README.md` for the full rationale behind each
-architecture decision below — read it before changing schema, caching, or
-infra choices, since several of them were deliberate trade-offs, not
-defaults.
+A take-home technical test: a BMS (building management system) dashboard
+builder. Users drag KPI/Bar/Line/Gauge cards onto a grid, configure each
+card's data source and axes against real building-sensor CSV data (energy,
+HVAC, occupancy, alerts), and view a building floor plan colored by live
+occupancy. Full build plan, phase-by-phase, in `bms-technical-test-plan.md`
+— read it before making an architectural decision not already reflected
+here, since most trade-offs (MSSQL over Postgres, Effect v4 beta, raw-CSV
+data facts overriding the dictionary, etc.) were deliberate and are
+reasoned through there.
 
-## Dev environment (Nix-only, no host installs)
+**Status**: required scope (plan phases P0–P7, through the "GATE") is
+complete — monorepo, data layer, contract + Effect services, dashboard
+builder UI, global filters, floor plan, PIN auth, and polish are all
+built and browser-verified. Bonuses (P8) and Track B (CI/deploy) are out
+of scope for this pass. Update this file's "Architecture" section if
+that changes — it should always describe what's actually in the tree,
+not just what's planned.
 
-`direnv allow` (or `nix develop`) builds and boots a **project-local**
-Postgres 16 with TimescaleDB compiled in and preloaded, backed by
-`.pgdata/` inside this repo (gitignored, not committed). This is **not**
-the machine-wide shared home-manager Postgres server other projects on
-this machine use — it's fully isolated to this project (own data dir, own
-port `5544`).
-
-**Always run `nix develop` from the repo root.** `devshell.nix` resolves
-`PGDATA`/`PGHOST` from `$PWD` at shell-entry — invoking it from a
-subdirectory (e.g. `cd apps/web && nix develop ../..`) boots a second,
-broken Postgres instance there instead of reusing the root one. If you
-need to run a command from a subdirectory, `cd` inside the wrapped shell
-command, not before invoking `nix develop`.
+## Dev environment (Nix-only for tooling; MSSQL via Docker)
 
 ```bash
-direnv allow          # or: nix develop
+direnv allow                    # or: nix develop
+docker compose up -d            # MSSQL 2022, healthcheck-gated
 bun install
-bun run db:migrate    # applies packages/data/src/migrations/*.sql
-bun run db:seed       # small demonstrative dataset, see packages/data/src/seed.ts
-bun run dev           # turbo run dev — starts apps/web on :3000
+bun run db:migrate              # prisma migrate deploy, packages/database/prisma/schema.prisma
+bun run db:seed                 # papaparse over data/*.csv, asserts exact row counts 80/35/63/20
+bun run dev                     # turbo run dev — starts apps/web on :3000
 ```
 
-Stop the Postgres server: `pg_ctl -D "$PGDATA" stop`.
+Stop MSSQL: `docker compose down` (add `-v` to also drop the data volume —
+that wipes seeded data, `bun run db:migrate && bun run db:seed` rebuilds
+it from the committed CSVs in seconds, so it's a safe reset).
 
-TimescaleDB is TSL-licensed ("unfree" to nixpkgs); `flake.nix` scopes
-`allowUnfreePredicate` to just `timescaledb`, not global nix config.
+MSSQL is Docker-only: the server itself isn't packaged in nixpkgs at all
+(open request, nixpkgs#325922) — the comparison researched in
+`bms-technical-test-plan.md` §12.1 is moot, Docker is the only local-server
+path. `devshell.nix` provides only the *client-side* tooling: bun/node,
+`sqlcmd`, `openssl` (for generating `AUTH_SECRET`), and nixpkgs
+`prisma-engines_7` (just `schema-engine`, exported as
+`PRISMA_SCHEMA_ENGINE_BINARY`) — Prisma's npm-downloaded engine binaries
+are dynamically linked and don't run on NixOS/nix-darwin without this. The
+Prisma 7 `prisma-client` generator + `@prisma/adapter-mssql` driver
+adapter means no Rust *query* engine is needed at runtime, only the schema
+engine for the CLI's migrate path.
 
-### Resetting the database
-
-`TRUNCATE ... CASCADE` does **not** properly invalidate a continuous
-aggregate (TRUNCATE bypasses the row-level triggers Timescale's
-invalidation log relies on) — it will leave stale materialized rows in
-`readings_hourly_rollup`. For a truly clean reset, drop and recreate the
-database instead:
-
-```bash
-dropdb --if-exists venturesea && createdb venturesea
-psql -d venturesea -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
-bun run db:migrate && bun run db:seed
-```
+Default local connection string (matches `docker-compose.yml`):
+`sqlserver://localhost:1433;database=bms;user=sa;password=BmsDashboard!2025;trustServerCertificate=true`.
+Create the `bms` database once after first `docker compose up` (migrate
+does not create the database itself):
+`sqlcmd -S localhost -U sa -P "BmsDashboard!2025" -C -Q "CREATE DATABASE bms;"`.
 
 ## Commands
 
 Root-level (turbo-orchestrated across the workspace):
 - `bun run dev` / `bun run build` / `bun run lint` / `bun run typecheck`
+- `bun run db:migrate` / `bun run db:seed` / `bun run db:generate`
+  (aliases into `packages/database`)
 
-`packages/data` (run via `bun run --cwd packages/data <script>`, or the
-root `db:migrate` / `db:seed` aliases):
-- `migrate` — runs `src/migrations/run.ts`, applies `*.sql` files in
-  `src/migrations/` in filename order, tracked in a `schema_migrations`
-  table (idempotent — reruns skip already-applied files by filename, so
-  editing an already-applied migration's contents has no effect until the
-  db is reset)
-- `seed` — runs `src/seed.ts`
-- `typecheck` — `tsc --noEmit`
-
-`apps/web`: standard Next.js scripts (`dev`, `build`, `start`, `lint`).
-There is no test runner configured in this repo yet.
+`apps/web`: standard Next.js scripts (`dev`, `build`, `start`, `lint`,
+`typecheck`). There is no test runner configured in this pass (unit tests
+for `QueryService` are a bonus item, not yet built).
 
 ## Architecture
 
-**Monorepo**: bun workspaces + turborepo. `apps/web` (Next.js App Router)
-depends on `packages/data` (`@venturesea/data`) via `workspace:*`. Internal
-imports in `packages/data/src` must be **extensionless** (`from "./db"`,
-not `from "./db.js"`) — despite being the correct Node-ESM convention,
-`.js`-suffixed imports pointing at `.ts` source aren't resolved by
-Turbopack when bundling the workspace package into `apps/web`, even though
-`bun run` resolves them fine standalone.
+**Monorepo**: bun workspaces + turborepo, no build step for internal
+packages — `apps/web` imports `@bms/contract` and `@bms/database` as
+`workspace:*`, TS source exported directly via each package's `exports`
+map (`effect` is a peer dependency of `@bms/contract`, pinned exact,
+matching `apps/web`'s own `effect` dependency — see the Effect v4 note
+below).
 
-**Data layer** (`packages/data/src`): all DB access goes through
-`@effect/sql-pg` (tagged-template SQL, not an ORM or raw `pg`). Every
-exported function returns an `Effect` requiring `SqlClient.SqlClient`;
-callers provide `DbLive` (`db.ts`) via `Effect.provide`. Key modules:
-- `db.ts` — `PgClient` layer, reads `DATABASE_URL` from env
-- `devices.ts` — device listing
-- `analytics.ts` — `getRollupSeries` (reads only from the continuous
-  aggregate, never raw `readings`) + `detectAnomalies` (naive rolling
-  z-score, see caveat below)
-- `rollup.ts` — `refreshHourlyRollup(since)`, forces immediate
-  materialization of the continuous aggregate after a bulk seed (the
-  scheduled policy alone could take up to an hour to catch up)
-- `migrations/` — plain numbered `.sql` files + a small runner, no
-  migration framework
+**`packages/database`** (`@bms/database`): Prisma 7 + MSSQL via
+`@prisma/adapter-mssql`, `prisma-client` generator with a custom output
+directory (`src/generated/`), **committed** (per the take-home's
+deliverable list — do not gitignore it). `schema.prisma` has five models
+— `EnergyConsumption`, `HvacPerformance`, `Occupancy`, `AlertsEvents`,
+plus whatever `packages/database/prisma/schema.prisma` currently defines
+— derived from the actual CSVs in `data/`, not blindly from
+`data/DATA_DICTIONARY.md` (the two disagree in a couple of places, e.g.
+`category: Lighting` appears in the data but not the dictionary — model
+categorical columns as plain `String`, never a DB enum, and source filter
+dropdowns from live `distinct` queries). `resolvedAt` is the only nullable
+column in the schema. `src/seed.ts` parses the CSVs with `papaparse` and
+asserts exact row counts (80/35/63/20) before considering the seed
+successful — that assertion is the evidence the CSV import is correct,
+don't relax it.
 
-**Schema** (`packages/data/src/migrations/0001_init.sql`,
-`0002_rollup_policy.sql`): `readings` is a **real TimescaleDB hypertable**
-(`create_hypertable`, 1-day chunks), and `readings_hourly_rollup` is a
-**real continuous aggregate** with a scheduled refresh policy — not
-hand-rolled substitutes. The API/dashboard read path always goes through
-the rollup, never raw `readings`; raw readings are only for drilling into
-a single flagged hour. This is also why there's no Redis in the stack —
-the continuous aggregate is the cache.
+**`packages/contract`** (`@bms/contract`): the single source of truth for
+every shape both `apps/web`'s frontend and backend agree on — Effect
+Schema domain models (`DataSource`, `Aggregation`, `CardType`,
+`TABLE_META`), request/response schemas (`CardConfig` discriminated
+union, `GlobalFilters`, `QueryRequest`/`QueryResponse`,
+`OccupancyLatestResponse`, `DashboardState`, `LoginRequest`), and tagged
+errors (`ValidationError`, `UnknownColumnError`, `UnauthorizedError`,
+`DbError`). `TABLE_META` is simultaneously the `/api/meta` response *and*
+the server-side column whitelist `QueryService` validates against —
+one definition, two jobs, so the two can't drift.
 
-**API routes** (`apps/web/src/app/api/`): `/api/devices` and
-`/api/devices/[deviceId]/readings` (time-range + rollup query + anomaly
-flags), thin wrappers that call into `@venturesea/data` and run the
-`Effect` with `Effect.runPromise`.
+**`apps/web`**: Next.js App Router, frontend *and* backend in one app —
+route handlers under `src/app/api/` are thin adapters (parse → decode →
+run Effect → map tagged errors to HTTP status), all real logic lives in
+`src/server/` as Effect services (`PrismaService`, `QueryService`,
+`MetaService`, `OccupancyService`, `AuthService`), composed via
+`ManagedRuntime` memoized on `globalThis` (avoids leaking connection
+pools across Next dev hot-reloads). `QueryService.execute` has two
+execution paths: Prisma `groupBy`/`aggregate` for everything except
+line-chart hourly bucketing, which needs `$queryRaw` with SQL Server
+2022's `DATETRUNC` — identifiers there are resolved through a literal
+lookup map keyed by an already-whitelisted column name (never
+string-interpolated from request input), values go through `Prisma.sql`
+parameters.
 
-**Known limitation, not a bug**: `detectAnomalies`'s rolling z-score has
-no seasonality awareness. With a short trailing window it can produce
-very large/noisy z-scores (near-zero baseline variance); with a longer
-window spanning a full day/night cycle, the normal diurnal swing can
-itself inflate the baseline variance and partly mask a real anomaly. This
-is intentional/documented, not something to silently "fix" by tuning
-thresholds — see `README.md` for the reasoning.
+**Effect version: v4 beta** (`4.0.0-beta.98` at time of writing, pinned
+exact — no caret, since betas can break between releases). Exposure is
+deliberately narrow: core `effect` only (Schema, Context, Layer, Effect),
+no platform/http/cluster packages, which is the subset whose programming
+model hasn't changed from v3. If the beta blocks progress, the fallback
+is a mechanical rename to v3 idioms (`Effect.Service`/`Context.Tag`,
+`Data.TaggedError` instead of `Context.Service`/`Schema.TaggedErrorClass`)
+— note it here and in `PROMPT_HISTORY.md` if that fallback is taken.
+
+**Auth** (`src/proxy.ts`, `src/server/auth.ts`, `src/server/session-token.ts`):
+added beyond the take-home's spec to demonstrate session handling — a
+single shared PIN (`APP_PIN`), constant-time-compared, signing a
+`base64url(payload).base64url(hmacSha256(payload))` cookie (no JWT
+library) with `AUTH_SECRET`. `session-token.ts` holds the pure sign/verify
+functions with no Effect dependency, shared between the Effect-wrapped
+`AuthService` (used by the login/logout routes) and the plain-function
+guard in `proxy.ts`, which stays dependency-free by design — Proxy runs
+on every request including prefetches, so it does a cheap
+cookie-signature check only, never touching Prisma/ManagedRuntime.
+
+**Frontend** (`src/components/`, `src/stores/`, `src/hooks/`): three
+separate state stores by lifetime — `stores/dashboard-store.ts` (Zustand
++ `persist`, card list + react-grid-layout positions), `stores/filter-store.ts`
+(Zustand, no persist — global filters reset on refresh, deliberately),
+and TanStack Query for all server data. `useCardQuery`'s query key
+(`[cardId, config, filters]`) is what makes "change a global filter,
+every card refetches" work — no manual event bus. `react-grid-layout` v2
+(a from-scratch TS rewrite, materially different API from v1) drives the
+dashboard canvas; new externally-added cards run through RGL's own
+`verticalCompactor.compact()` before being stored, since v2 doesn't
+auto-compact positions supplied from outside its own drag/resize reducer.
+The floor plan (`components/floor-plan/`) draws only the zones each
+floor's real occupancy data has (`zone-shapes.ts`'s verified matrix —
+`BLD-001` floor 2 is the only 3-zone floor), never a fabricated zone.
+
+**Known limitation, not a bug**: the seed CSVs cover a single day
+(2025-06-01, hourly, last reading 22:00/22:30). "Today"/"last 7 days"
+filters are empty against real wall-clock time unless `DEMO_NOW` is set —
+that's intentional (an honest empty state is itself a required feature,
+not a bug to hide). See `README.md`'s demo section for the specific
+`DEMO_NOW` values that populate vs. deliberately stale the dashboard.
 
 ## Other agent-facing notes
 
 `apps/web/CLAUDE.md` (imports `apps/web/AGENTS.md`) warns that this
 project's Next.js version (16.2.10) has breaking changes vs. training-data
 Next.js — read `apps/web/node_modules/next/dist/docs/` before writing App
-Router / route handler code there.
+Router / route handler code there. One breaking change already found and
+adapted to: **`middleware.ts` is renamed `proxy.ts` in Next 16** (`export
+function middleware` → `export function proxy`), and Proxy now defaults
+to the Node.js runtime instead of Edge — this repo's session guard is at
+`src/proxy.ts`, not `src/middleware.ts`.
+
+## No co-author
+
+Never write commit message with co-author
