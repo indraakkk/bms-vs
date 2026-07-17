@@ -200,8 +200,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// encrypt=false: tedious rejects TLS SNI against a bare IP ("Setting
+		// the TLS ServerName to an IP address is not permitted") and the
+		// instance has no DNS name. Traffic never leaves the VPC (private IP
+		// only) and GCP encrypts it at the network layer.
 		databaseUrl := pulumi.Sprintf(
-			"sqlserver://%s:1433;database=bms;user=sqlserver;password=%s;trustServerCertificate=true",
+			"sqlserver://%s:1433;database=bms;user=sqlserver;password=%s;encrypt=false;trustServerCertificate=true",
 			privateIp, appDbPassword.Result,
 		)
 
