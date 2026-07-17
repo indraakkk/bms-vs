@@ -2,6 +2,8 @@
 
 import type { ZoneOccupancy } from "@bms/contract";
 import { useEffect, useState } from "react";
+import { SidebarTrigger } from "@/components/sidebar-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,6 +37,7 @@ export function FloorPlan() {
     <TooltipProvider delayDuration={100}>
       <div className="flex h-full min-h-0 flex-1 flex-col">
         <header className="flex items-center gap-3.5 border-b bg-card px-[22px] pt-[15px] pb-[13px]">
+          <SidebarTrigger />
           <div>
             <h1 className="font-extrabold text-[18px] tracking-[-0.3px]">Floor Plan</h1>
             <div className="mt-px text-[12px] text-fg-subtle">
@@ -43,6 +46,7 @@ export function FloorPlan() {
           </div>
           <div className="flex-1" />
           <UpdatedChip updatedAt={activeQuery.dataUpdatedAt} />
+          <ThemeToggle />
         </header>
 
         <Tabs

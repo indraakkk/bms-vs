@@ -111,6 +111,23 @@ export function IconLock(props: IconProps) {
   );
 }
 
+export function IconPanelLeft(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </svg>
+  );
+}
+
+export function IconChevronUpDown(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
+    </svg>
+  );
+}
+
 export function IconExport(props: IconProps) {
   return (
     <svg {...base(props)}>
