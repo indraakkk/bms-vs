@@ -118,7 +118,10 @@ function FloorPlanView({ buildingId, floor }: { buildingId: string; floor: numbe
           <div className="flex gap-3.5 text-[11px] text-muted-foreground">
             {LEGEND.map((item) => (
               <span key={item.label} className="flex items-center gap-1.5">
-                <span className="size-[11px] rounded-[3px]" style={{ background: item.token }} />
+                <span
+                  className="size-[11px] rounded-[3px] ring-1 ring-black/15 ring-inset dark:ring-white/15"
+                  style={{ background: item.token }}
+                />
                 {item.label}
               </span>
             ))}
@@ -190,14 +193,17 @@ function ZoneSummaryCard({
         const rate = !zone || zone.isStale ? "—" : `${zone.occupancyRatePercent.toFixed(1)}%`;
         return (
           <div key={name} className="flex items-center gap-[11px] border-b py-[9px] last:border-b-0">
-            <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: color }} />
+            <span
+              className="size-2.5 shrink-0 rounded-[3px] ring-1 ring-black/15 ring-inset dark:ring-white/15"
+              style={{ background: color }}
+            />
             <div className="min-w-0 flex-1">
               <div className="font-semibold text-[13px]">{name}</div>
               <div className="text-[11px] text-fg-subtle">{detail}</div>
             </div>
-            <div className="font-mono font-semibold text-[15px]" style={{ color }}>
-              {rate}
-            </div>
+            {/* The swatch carries the band color (same pattern as ZoneTooltipBody);
+             * band-colored text fails WCAG on the light card for green/amber. */}
+            <div className="font-mono font-semibold text-[15px]">{rate}</div>
           </div>
         );
       })}

@@ -189,7 +189,12 @@ Fonts are Hanken Grotesk + IBM Plex Mono via `next/font`. Icons are the
 mock's own SVGs re-authored in `components/icons.tsx` — don't swap in
 lucide equivalents on design surfaces. Chart/status/occupancy colors are
 CSS vars only (never hexes) so both themes work; red stays reserved for
-Critical/high-occupancy. Design-driven *features* that are real, not
+Critical/high-occupancy. One deliberate exception to mock-fidelity: the
+floor-plan occupancy ramp is green/yellow/red per the take-home PDF's
+required mapping (with paired `--occ-*-ink` tokens for labels drawn on
+the fills — yellow needs dark ink), overriding the mock's
+neutral/green/red legend; don't re-sync those tokens from the mock.
+Design-driven *features* that are real, not
 cosmetic: dashboard export/import as JSON (decoded against the contract's
 `DashboardState` with `Schema.decodeUnknownSync` — this v4 beta has no
 `decodeUnknownEither`), sample-dashboard loader (`lib/sample-dashboard.ts`,

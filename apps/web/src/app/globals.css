@@ -46,10 +46,18 @@
   --warn-soft: oklch(0.97 0 0);
   --info: oklch(0.556 0 0);
   --info-soft: oklch(0.97 0 0);
-  --occ-low: oklch(0.556 0 0);
-  --occ-mid: oklch(0.723 0.219 149.579);
+  /* Occupancy ramp per the take-home PDF (green=low, yellow=medium,
+   * red=high — overrides the mock's neutral/green/red legend). Each band
+   * pairs its fill with an -ink token for labels drawn on the fill:
+   * yellow/green need dark ink, only light-theme red carries white. */
+  --occ-low: oklch(0.723 0.219 149.579);
+  --occ-low-ink: oklch(0.205 0 0);
+  --occ-mid: oklch(0.769 0.188 70.08);
+  --occ-mid-ink: oklch(0.205 0 0);
   --occ-high: oklch(0.577 0.245 27.325);
+  --occ-high-ink: oklch(1 0 0);
   --occ-stale: oklch(0.708 0 0);
+  --occ-stale-ink: oklch(0.205 0 0);
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --c1: oklch(0 0 0);
   --c2: oklch(0 0 0 / 62%);
@@ -91,10 +99,14 @@
   --warn-soft: oklch(0.371 0 0);
   --info: oklch(0.708 0 0);
   --info-soft: oklch(0.269 0 0);
-  --occ-low: oklch(0.708 0 0);
-  --occ-mid: oklch(0.792 0.209 151.711);
+  --occ-low: oklch(0.792 0.209 151.711);
+  --occ-low-ink: oklch(0.145 0 0);
+  --occ-mid: oklch(0.828 0.189 84.429);
+  --occ-mid-ink: oklch(0.145 0 0);
   --occ-high: oklch(0.704 0.191 22.216);
+  --occ-high-ink: oklch(0.145 0 0);
   --occ-stale: oklch(0.556 0 0);
+  --occ-stale-ink: oklch(0.985 0 0);
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
   --c1: oklch(0.922 0 0);
   --c2: oklch(0.922 0 0 / 65%);
@@ -140,9 +152,13 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-occ-low: var(--occ-low);
+  --color-occ-low-ink: var(--occ-low-ink);
   --color-occ-mid: var(--occ-mid);
+  --color-occ-mid-ink: var(--occ-mid-ink);
   --color-occ-high: var(--occ-high);
+  --color-occ-high-ink: var(--occ-high-ink);
   --color-occ-stale: var(--occ-stale);
+  --color-occ-stale-ink: var(--occ-stale-ink);
   --font-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }

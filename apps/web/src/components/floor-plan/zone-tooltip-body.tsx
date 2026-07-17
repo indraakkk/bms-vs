@@ -18,7 +18,7 @@ export function ZoneTooltipBody({ zone }: { zone: ZoneOccupancy }) {
     <div className="min-w-[188px]">
       <div className="mb-[9px] flex items-center gap-2">
         <span
-          className="size-2.5 rounded-[3px]"
+          className="size-2.5 rounded-[3px] ring-1 ring-black/15 ring-inset dark:ring-white/15"
           style={{ background: occupancyFill(zone.occupancyRatePercent, zone.isStale) }}
         />
         <span className="font-extrabold text-[13.5px]">

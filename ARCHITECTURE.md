@@ -179,9 +179,10 @@ Each real zone renders as an SVG `<rect>` inside a `<Tooltip>` (from
 shadcn/Radix) wrapping the whole `<g>` group — label, room name, and
 person count are all part of the hover/tap target, not just the
 rectangle. Fill color comes from one shared function
-(`occupancyFill`) applied consistently to both the floor plan and (via
-the same `STATUS` palette) the gauge card: `<40%` green, `40–70%` amber,
-`>70%` red, or a flat gray + "No data" label when the zone's latest
+(`occupancyFill`, paired with `occupancyInk` for the labels drawn on the
+fill), backed by the `--occ-*`/`--occ-*-ink` theme tokens in
+`globals.css`: `<40%` green, `40–70%` yellow, `>70%` red (the PDF's
+required mapping), or a flat gray + "No data" label when the zone's latest
 reading is more than an hour old (`isStale`, computed server-side in
 `OccupancyService` against the same `DEMO_NOW`-aware clock the rest of
 the app uses). Tabs switch between the four building/floor combinations;

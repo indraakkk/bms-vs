@@ -2,7 +2,7 @@
 
 import type { ZoneOccupancy } from "@bms/contract";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { occupancyFill } from "./occupancy-color";
+import { occupancyFill, occupancyInk } from "./occupancy-color";
 import {
   FLOOR_LAYOUTS,
   FLOOR_PLAN_OUTLINE,
@@ -78,6 +78,7 @@ export function FloorPlanSvg({
         const zone = zonesByName.get(zoneName);
         const stale = zone?.isStale ?? true;
         const fill = zone ? occupancyFill(zone.occupancyRatePercent, zone.isStale) : "var(--occ-stale)";
+        const ink = zone ? occupancyInk(zone.occupancyRatePercent, zone.isStale) : "var(--occ-stale-ink)";
         const cx = rect.x + rect.w / 2;
         const cy = rect.y + rect.h / 2;
 
@@ -95,7 +96,7 @@ export function FloorPlanSvg({
                   stroke={fill}
                   strokeWidth={2}
                   opacity={stale ? 0.45 : 0.92}
-                  style={{ transition: "opacity .3s, fill .3s" }}
+                  style={{ transition: "opacity .3s, fill .3s, stroke .3s" }}
                 />
                 <rect
                   x={rect.x}
@@ -110,7 +111,7 @@ export function FloorPlanSvg({
                 <text
                   x={rect.x + 18}
                   y={rect.y + 31}
-                  style={{ fontSize: 17, fontWeight: 700, fill: "#fff" }}
+                  style={{ fontSize: 17, fontWeight: 700, fill: ink }}
                 >
                   {zoneName}
                 </text>
@@ -119,7 +120,7 @@ export function FloorPlanSvg({
                     x={cx}
                     y={cy + 6}
                     textAnchor="middle"
-                    style={{ fontSize: 17, fill: "#fff", opacity: 0.92 }}
+                    style={{ fontSize: 17, fill: ink, opacity: 0.92 }}
                   >
                     No data
                   </text>
@@ -132,19 +133,13 @@ export function FloorPlanSvg({
                       style={{
                         fontSize: 42,
                         fontWeight: 700,
-                        fill: "#fff",
+                        fill: ink,
                         fontFamily: MONO,
-                        filter: "drop-shadow(0 1px 2px rgba(0,0,0,.35))",
                       }}
                     >
                       {zone.isStale ? "—" : String(zone.personCount)}
                     </text>
-                    <text
-                      x={cx}
-                      y={cy + 24}
-                      textAnchor="middle"
-                      style={{ fontSize: 14, fill: "rgba(255,255,255,.92)" }}
-                    >
+                    <text x={cx} y={cy + 24} textAnchor="middle" style={{ fontSize: 14, fill: ink }}>
                       {zone.isStale
                         ? "stale >1h"
                         : `of ${zone.zoneCapacity} · ${zone.occupancyRatePercent.toFixed(1)}%`}
@@ -156,7 +151,7 @@ export function FloorPlanSvg({
                     x={rect.x + rect.w - 16}
                     y={rect.y + 27}
                     textAnchor="end"
-                    style={{ fontSize: 15, fill: "#fff", opacity: 0.85 }}
+                    style={{ fontSize: 15, fill: ink, opacity: 0.85 }}
                   >
                     ⚠
                   </text>
