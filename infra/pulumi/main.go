@@ -200,8 +200,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// encrypt=false: tedious rejects TLS SNI against a bare IP ("Setting
+		// the TLS ServerName to an IP address is not permitted") and the
+		// instance has no DNS name. Traffic never leaves the VPC (private IP
+		// only) and GCP encrypts it at the network layer.
 		databaseUrl := pulumi.Sprintf(
-			"sqlserver://%s:1433;database=bms;user=sqlserver;password=%s;trustServerCertificate=true",
+			"sqlserver://%s:1433;database=bms;user=sqlserver;password=%s;encrypt=false;trustServerCertificate=true",
 			privateIp, appDbPassword.Result,
 		)
 
@@ -379,16 +383,18 @@ func main() {
 					&cloudrunv2.ServiceTemplateContainerArgs{
 						Image: cacheImage,
 						Ports: &cloudrunv2.ServiceTemplateContainerPortsArgs{
-							// http1, not h2c: the ducktors fastify server
-							// speaks HTTP/1.1 — h2c end-to-end yields 502
-							// "protocol error" from Cloud Run's proxy.
-							Name:          pulumi.String("http1"),
+							// h2c end-to-end (paired with HTTP2=true below,
+							// which makes fastify actually speak it): lifts
+							// Cloud Run's 32 MB HTTP/1 request cap, which the
+							// Next build artifact exceeds (413 otherwise).
+							Name:          pulumi.String("h2c"),
 							ContainerPort: pulumi.Int(3000),
 						},
 						Resources: &cloudrunv2.ServiceTemplateContainerResourcesArgs{
 							Limits: pulumi.StringMap{"memory": pulumi.String("512Mi"), "cpu": pulumi.String("1")},
 						},
 						Envs: cloudrunv2.ServiceTemplateContainerEnvArray{
+							&cloudrunv2.ServiceTemplateContainerEnvArgs{Name: pulumi.String("HTTP2"), Value: pulumi.String("true")},
 							&cloudrunv2.ServiceTemplateContainerEnvArgs{Name: pulumi.String("STORAGE_PROVIDER"), Value: pulumi.String("google-cloud-storage")},
 							&cloudrunv2.ServiceTemplateContainerEnvArgs{Name: pulumi.String("STORAGE_PATH"), Value: bucket.Name},
 							&cloudrunv2.ServiceTemplateContainerEnvArgs{Name: pulumi.String("GCS_PROJECT_ID"), Value: pulumi.String(project)},
