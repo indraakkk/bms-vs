@@ -13,6 +13,7 @@ import {
   IconSpinner,
   IconTrash,
 } from "@/components/icons";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCardQuery } from "@/hooks/use-card-query";
 import { columnLabel, summarizeConfig } from "@/lib/card-defaults";
 import { cn } from "@/lib/utils";
@@ -92,13 +93,18 @@ export function CardShell({
       }}
     >
       <header className="bms-card-drag flex shrink-0 cursor-grab items-center gap-2 border-b bg-card py-[9px] pr-2.5 pl-2 active:cursor-grabbing">
-        <span className="flex shrink-0 text-fg-subtle print:hidden" title="Drag to move">
-          <IconGrip size={15} />
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex shrink-0 text-fg-subtle print:hidden">
+              <IconGrip size={15} />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent sideOffset={6}>Drag to move</TooltipContent>
+        </Tooltip>
         <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-accent text-primary">
           <TypeIcon size={14} />
         </span>
-        <div className="min-w-0 flex-1 leading-[1.25]">
+        <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-bold text-[12.5px]">{card.title}</div>
           <div className="truncate text-[10.5px] text-fg-subtle">
             {card.config ? summarizeConfig(card.config) : "Choose a data source & axes"}
@@ -191,19 +197,26 @@ function CardAction({
   destructive?: boolean;
   children: React.ReactNode;
 }) {
+  // Radix tooltip instead of a native title: theme-aware high-contrast
+  // surface, 300ms first-hover delay, and instant labels when scrubbing
+  // across the action cluster (native titles are ~1s and unstyled).
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        "flex size-[26px] items-center justify-center rounded-[7px] text-fg-subtle transition-[color,background-color,scale] active:scale-95",
-        destructive ? "hover:bg-crit-soft hover:text-crit" : "hover:bg-surface-3 hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          onClick={onClick}
+          className={cn(
+            "flex size-[26px] items-center justify-center rounded-[7px] text-fg-subtle transition-[color,background-color,scale] active:scale-95",
+            destructive ? "hover:bg-crit-soft hover:text-crit" : "hover:bg-surface-3 hover:text-foreground",
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent sideOffset={6}>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 

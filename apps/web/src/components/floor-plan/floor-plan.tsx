@@ -129,7 +129,7 @@ function FloorPlanView({ buildingId, floor }: { buildingId: string; floor: numbe
         </div>
         <div className="flex min-h-0 flex-1 items-center justify-center">
           {isPending ? (
-            <Skeleton className="aspect-[1000/560] w-full rounded-xl" />
+            <Skeleton className="aspect-1000/560 w-full rounded-xl" />
           ) : isError ? (
             <p className="text-[13px] text-crit">
               Failed to load occupancy data for {buildingId} floor {floor}.

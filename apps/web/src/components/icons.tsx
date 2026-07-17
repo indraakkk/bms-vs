@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative — every call site supplies the accessible name itself (aria-label on the parent button/tooltip, or adjacent visible text); see aria-hidden default in base() below.
 import type { CardType } from "@bms/contract";
 
 /**
@@ -16,6 +17,7 @@ function base({ size = 15, ...props }: IconProps) {
     fill: "none",
     stroke: "currentColor",
     strokeWidth: 1.8,
+    "aria-hidden": true,
     ...props,
   } as const;
 }
