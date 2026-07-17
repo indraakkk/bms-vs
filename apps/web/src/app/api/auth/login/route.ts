@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const auth = yield* AuthService;
     const valid = yield* auth.verifyPin(pin);
     if (!valid) {
-      return yield* Effect.fail(new UnauthorizedError({ message: "Invalid PIN" }));
+      return yield* new UnauthorizedError({ message: "Invalid PIN" });
     }
     return yield* auth.signSession();
   });
@@ -26,20 +26,32 @@ export async function POST(request: Request) {
     program.pipe(
       Effect.map((token) => ({ ok: true as const, token })),
       Effect.catchTags({
-        ValidationError: (e) => Effect.succeed({ ok: false as const, status: 400, message: e.message }),
-        UnauthorizedError: (e) => Effect.succeed({ ok: false as const, status: 401, message: e.message }),
+        ValidationError: (e) =>
+          Effect.succeed({ ok: false as const, status: 400, error: e._tag, message: e.message }),
+        UnauthorizedError: (e) =>
+          Effect.succeed({ ok: false as const, status: 401, error: e._tag, message: e.message }),
       }),
       Effect.catchCause((cause) =>
         Effect.sync(() => {
           console.error("Login failed:", cause);
-          return { ok: false as const, status: 500, message: "Something went wrong" };
+          return {
+            ok: false as const,
+            status: 500,
+            error: "InternalError",
+            message: "Something went wrong",
+          };
         }),
       ),
     ),
   );
 
   if (!outcome.ok) {
-    return Response.json({ message: outcome.message }, { status: outcome.status });
+    // Same {error, message} shape as http.ts's toResponse — this route
+    // can't compose through it because it must set a cookie on success.
+    return Response.json(
+      { error: outcome.error, message: outcome.message },
+      { status: outcome.status },
+    );
   }
 
   (await cookies()).set(SESSION_COOKIE_NAME, outcome.token, {
