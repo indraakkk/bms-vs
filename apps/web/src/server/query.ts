@@ -23,13 +23,11 @@ const checkColumn = Effect.fn("QueryService.checkColumn")(function* (
 ) {
   const meta = findColumn(source, column);
   if (!meta) {
-    return yield* Effect.fail(
-      new UnknownColumnError({
-        source,
-        column,
-        allowed: TABLE_META[source].map((c) => c.name),
-      }),
-    );
+    return yield* new UnknownColumnError({
+      source,
+      column,
+      allowed: TABLE_META[source].map((c) => c.name),
+    });
   }
   return meta;
 });
@@ -37,11 +35,9 @@ const checkColumn = Effect.fn("QueryService.checkColumn")(function* (
 const requireNumericOrCount = Effect.fn("QueryService.requireNumericOrCount")(
   function* (meta: ColumnMeta, aggregation: Aggregation) {
     if (aggregation !== "count" && !meta.isNumeric) {
-      return yield* Effect.fail(
-        new ValidationError({
-          message: `Column "${meta.name}" is not numeric — only "count" aggregation is valid for non-numeric columns`,
-        }),
-      );
+      return yield* new ValidationError({
+        message: `Column "${meta.name}" is not numeric — only "count" aggregation is valid for non-numeric columns`,
+      });
     }
   },
 );
@@ -55,9 +51,9 @@ const validateConfig = Effect.fn("QueryService.validateConfig")(function* (
       const meta = yield* checkColumn(config.source, config.metric);
       yield* requireNumericOrCount(meta, config.aggregation);
       if (config.cardType === "gauge" && config.min >= config.max) {
-        yield* Effect.fail(
-          new ValidationError({ message: "Gauge min must be less than max" }),
-        );
+        return yield* new ValidationError({
+          message: "Gauge min must be less than max",
+        });
       }
       break;
     }
@@ -70,11 +66,9 @@ const validateConfig = Effect.fn("QueryService.validateConfig")(function* (
     case "line": {
       const xMeta = yield* checkColumn(config.source, config.x);
       if (!xMeta.isTimestamp) {
-        yield* Effect.fail(
-          new ValidationError({
-            message: `Line chart X column "${config.x}" must be a timestamp column`,
-          }),
-        );
+        return yield* new ValidationError({
+          message: `Line chart X column "${config.x}" must be a timestamp column`,
+        });
       }
       const yMeta = yield* checkColumn(config.source, config.y);
       yield* requireNumericOrCount(yMeta, config.aggregation);
@@ -92,28 +86,22 @@ const validateConfig = Effect.fn("QueryService.validateConfig")(function* (
       // time-range filter — equality-matching an exact instant isn't a
       // sensible per-card filter anyway, so it's rejected outright
       // rather than merged.
-      yield* Effect.fail(
-        new ValidationError({
-          message: `Column "${config.filter.column}" is a timestamp — use the global time range filter instead of a per-card filter`,
-        }),
-      );
+      return yield* new ValidationError({
+        message: `Column "${config.filter.column}" is a timestamp — use the global time range filter instead of a per-card filter`,
+      });
     }
     if (config.filter.value.trim() === "") {
-      yield* Effect.fail(
-        new ValidationError({
-          message: `Filter value for column "${config.filter.column}" must not be empty`,
-        }),
-      );
+      return yield* new ValidationError({
+        message: `Filter value for column "${config.filter.column}" must not be empty`,
+      });
     }
     // Without this, a non-numeric value would coerce to NaN in
     // coerceFilterValue and match zero rows — a silently-empty 200 the
     // user can't distinguish from genuinely absent data.
     if (filterMeta.dbType === "number" && !Number.isFinite(Number(config.filter.value))) {
-      yield* Effect.fail(
-        new ValidationError({
-          message: `Filter value "${config.filter.value}" is not a number — column "${config.filter.column}" is numeric`,
-        }),
-      );
+      return yield* new ValidationError({
+        message: `Filter value "${config.filter.value}" is not a number — column "${config.filter.column}" is numeric`,
+      });
     }
   }
 });
@@ -126,11 +114,9 @@ const validateGlobalFilters = Effect.fn(
   }
   const { from, to } = globalFilters.timeRange;
   if (!from || !to) {
-    return yield* Effect.fail(
-      new ValidationError({
-        message: '"custom" time range requires both "from" and "to"',
-      }),
-    );
+    return yield* new ValidationError({
+      message: '"custom" time range requires both "from" and "to"',
+    });
   }
   // An unparseable bound would flow into the Prisma where-range as an
   // Invalid Date and fail deep in the driver as a 500 — reject it here
@@ -138,18 +124,14 @@ const validateGlobalFilters = Effect.fn(
   const fromMs = new Date(from).getTime();
   const toMs = new Date(to).getTime();
   if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
-    return yield* Effect.fail(
-      new ValidationError({
-        message: '"from" and "to" must be valid ISO-8601 timestamps',
-      }),
-    );
+    return yield* new ValidationError({
+      message: '"from" and "to" must be valid ISO-8601 timestamps',
+    });
   }
   if (fromMs > toMs) {
-    return yield* Effect.fail(
-      new ValidationError({
-        message: '"from" must not be after "to"',
-      }),
-    );
+    return yield* new ValidationError({
+      message: '"from" must not be after "to"',
+    });
   }
 });
 

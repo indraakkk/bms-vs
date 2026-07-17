@@ -15,6 +15,9 @@ import {
   CHART_MONO,
   CHART_TICK,
   SERIES_COLORS,
+  TOOLTIP_CONTENT_STYLE,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
 } from "@/components/dashboard/cards/chart-colors";
 import {
   formatCompact,
@@ -22,15 +25,7 @@ import {
   truncateLabel,
 } from "@/components/dashboard/cards/chart-utils";
 import { severityColor } from "@/components/ui/severity-badge";
-
-const TOOLTIP_STYLE: React.CSSProperties = {
-  fontSize: 12,
-  borderRadius: 10,
-  background: "var(--popover)",
-  border: "1px solid var(--border-strong)",
-  color: "var(--popover-foreground)",
-  boxShadow: "0 16px 40px -12px rgba(0,0,0,.4)",
-};
+import { columnLabel } from "@/lib/card-defaults";
 
 export function BarCard({
   config,
@@ -70,12 +65,22 @@ export function BarCard({
         />
         <Tooltip
           formatter={(value: number) => formatNumber(value)}
-          contentStyle={TOOLTIP_STYLE}
+          contentStyle={TOOLTIP_CONTENT_STYLE}
+          itemStyle={TOOLTIP_ITEM_STYLE}
+          labelStyle={TOOLTIP_LABEL_STYLE}
           cursor={{ fill: "var(--accent)", opacity: 0.5 }}
         />
         {/* Charts redraw on every filter/refetch — recharts' default grow-in
             would replay each time, so data draws settled (matches the Area). */}
-        <Bar dataKey="y" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false}>
+        <Bar
+          dataKey="y"
+          // Tooltip entry label — without it Recharts prints the raw
+          // dataKey ("y : 233.2").
+          name={config.aggregation === "count" ? "Count" : columnLabel(config.source, config.y)}
+          radius={[4, 4, 0, 0]}
+          maxBarSize={48}
+          isAnimationActive={false}
+        >
           <LabelList
             dataKey="y"
             position="top"

@@ -1,10 +1,10 @@
 import { PrismaMssql } from "@prisma/adapter-mssql";
 import { PrismaClient } from "./generated/client/client";
 
-export * from "./generated/client/client";
-export * from "./generated/client/models";
-export * from "./generated/client/enums";
 export * from "./clock";
+export * from "./generated/client/client";
+export * from "./generated/client/enums";
+export * from "./generated/client/models";
 
 /**
  * `logQueries` subscribes to Prisma's query event log and prints every
