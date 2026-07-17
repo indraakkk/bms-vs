@@ -22,7 +22,13 @@ Claude Design mock ("VS BMS Dashboard.dc.html", project "Dashboard design
 with themes" on claude.ai/design) pixel-close on top of the existing
 architecture — see PROMPT_HISTORY.md's P8 entry for what was adopted vs.
 deliberately not (the mock is a *spec*; its throwaway prototype code was
-never imported). Track B (CI/deploy) remains out of scope. Update this
+never imported). A follow-up bonus pass completed the PDF's remaining
+optional items: print/PDF export (dashboard header Print button —
+light-theme flip, `--print-zoom` fit-to-page, `print:hidden` chrome),
+card-removal exit animation (`card-out`, completing add/remove/rearrange
+transitions), SQL query logging (`QUERY_LOG=1` → Prisma query events with
+duration, wired in `createPrismaClient`), and a `bun test` unit suite
+(see Commands). Track B (CI/deploy) remains out of scope. Update this
 file's "Architecture" section if that changes — it should always describe
 what's actually in the tree, not just what's planned.
 
@@ -62,13 +68,17 @@ does not create the database itself):
 ## Commands
 
 Root-level (turbo-orchestrated across the workspace):
-- `bun run dev` / `bun run build` / `bun run lint` / `bun run typecheck`
+- `bun run dev` / `bun run build` / `bun run lint` / `bun run test` /
+  `bun run typecheck`
 - `bun run db:migrate` / `bun run db:seed` / `bun run db:generate`
   (aliases into `packages/database`)
 
 `apps/web`: standard Next.js scripts (`dev`, `build`, `start`, `lint`,
-`typecheck`). There is no test runner configured in this pass (unit tests
-for `QueryService` are a bonus item, not yet built).
+`typecheck`) plus `test` (`bun test src` — DB-free unit tests colocated
+as `src/server/*.test.ts`: QueryService validation/aggregation-mapping/
+where-building against a recorded Prisma stub, session-token
+sign/verify/tamper/expiry, and the `TABLE_META ⊆ DB_COLUMN` raw-SQL
+whitelist invariant).
 
 ## Architecture
 

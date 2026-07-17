@@ -18,6 +18,10 @@ and floor plan. Functional extras that came with the design: export/import
 the dashboard as JSON (validated against the shared contract schema), a
 one-click sample dashboard, card duplication, KPI trend sparklines, and
 per-card query stats (row count · execution ms) in each card's footer.
+Remaining bonus items round out the list: print/PDF export of the
+dashboard (Print button — light-themed, chrome-stripped, scaled to the
+page), animated card add/remove/rearrange transitions, SQL query logging
+(`QUERY_LOG=1`), and a unit-test suite (`bun run test`).
 
 ## Quick start
 
@@ -59,6 +63,7 @@ Copy `.env.example` to `apps/web/.env` **and** `packages/database/.env`
 | `APP_PIN` | PIN for the login screen — free-length; generate a real one with `openssl rand -hex 16` (see [Auth](#auth), below) | `1234` (dev) |
 | `AUTH_SECRET` | HMAC key signing the session cookie — generate with `openssl rand -base64 32` | — |
 | `DEMO_NOW` | Pins "now" for time-range presets and occupancy staleness (see [Demo data](#demo-data--demo_now), below) | unset (real time) |
+| `QUERY_LOG` | Set to `1` to log every executed SQL statement with its bound parameters and execution time to the server console (debugging aid) | unset (off) |
 
 ## Auth
 
@@ -102,6 +107,7 @@ Root (turbo-orchestrated):
 bun run dev          # start apps/web on :3000
 bun run build        # production build
 bun run lint          # eslint across the workspace
+bun run test         # bun test — QueryService validation/aggregation/filter logic, session tokens, whitelist invariant
 bun run typecheck    # tsc --noEmit across the workspace
 bun run db:migrate   # prisma migrate deploy
 bun run db:seed      # parse data/*.csv, assert exact row counts
@@ -131,10 +137,6 @@ the phase-by-phase build log and decision record.
 
 ## Known limitations (by design, not oversights)
 
-- **No test suite** in this pass — unit tests for `QueryService`
-  (validation + aggregation mapping) and the occupancy color/staleness
-  helpers are natural additions but weren't in the required scope for
-  this pass.
 - **Single shared PIN**, not per-user accounts — see [Auth](#auth).
 - **No CI/deploy pipeline** — this pass covers the local dev environment
   (Nix devshell + Docker Compose) only.
