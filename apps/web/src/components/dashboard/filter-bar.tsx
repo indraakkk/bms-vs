@@ -1,7 +1,7 @@
 "use client";
 
-import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { IconFunnel } from "@/components/icons";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

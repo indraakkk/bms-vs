@@ -1,7 +1,7 @@
 import {
-  DbError,
-  UnauthorizedError,
-  UnknownColumnError,
+  type DbError,
+  type UnauthorizedError,
+  type UnknownColumnError,
   ValidationError,
 } from "@bms/contract";
 import { Effect, Schema } from "effect";
