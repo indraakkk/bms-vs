@@ -203,6 +203,14 @@
     transform: none;
   }
 }
+/* Exit twin of card-in — DashboardCanvas plays this before a removed
+ * card actually leaves the store, so removal doesn't hard-pop. */
+@keyframes card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -277,4 +285,28 @@
 [data-sonner-toast][data-type="error"] {
   --normal-bg: var(--crit) !important;
   --normal-text: #fff !important;
+}
+
+/* Print / PDF export (bonus): the dashboard header's Print button flips
+ * the theme to light, sets --print-zoom so the grid's exact on-screen
+ * geometry fits the page width, and opens the print dialog. This block
+ * strips the interactive chrome (components carry print:hidden for
+ * sidebar/palette/buttons) and unlocks the fixed-height console shell so
+ * the full canvas paints instead of the scroll viewport. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .bms-print-zoom {
+    zoom: var(--print-zoom, 1);
+  }
+  .react-grid-item > .react-resizable-handle,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
 }

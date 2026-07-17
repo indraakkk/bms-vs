@@ -31,7 +31,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex w-[238px] shrink-0 flex-col gap-1 border-r bg-card px-3.5 py-[18px]">
+    <aside className="flex w-[238px] shrink-0 flex-col gap-1 border-r bg-card px-3.5 py-[18px] print:hidden">
       <div className="flex items-center gap-[11px] px-1.5 pt-1 pb-4">
         <BrandMark className="size-[38px] rounded-[10px] text-[15px]" />
         <div className="leading-[1.15]">

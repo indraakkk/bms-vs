@@ -1,7 +1,7 @@
 "use client";
 
 import type { CardType, GridLayoutItem } from "@bms/contract";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import GridLayout, { useContainerWidth } from "react-grid-layout";
 import { toast } from "sonner";
 import { CardShell } from "@/components/dashboard/card-shell";
@@ -71,30 +71,52 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
     [addCard, onEditCard],
   );
 
+  // Cards animate out before they leave the store: Remove marks the id,
+  // the card plays its card-out keyframe, and only then does removeCard
+  // unmount it (RGL's transform transitions animate the re-compaction).
+  const [removingIds, setRemovingIds] = useState<ReadonlySet<string>>(new Set());
+
+  const handleRemove = useCallback(
+    (cardId: string, title: string) => {
+      setRemovingIds((prev) => {
+        if (prev.has(cardId)) return prev;
+        return new Set(prev).add(cardId);
+      });
+      window.setTimeout(() => {
+        removeCard(cardId);
+        setRemovingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cardId);
+          return next;
+        });
+        toast.success(`Removed "${title}"`);
+      }, 200);
+    },
+    [removeCard],
+  );
+
   const gridChildren = useMemo(
     () =>
       cards.map((card) => (
         <div key={card.id}>
           <CardShell
             card={card}
+            removing={removingIds.has(card.id)}
             onEdit={() => onEditCard(card.id)}
             onDuplicate={() => duplicateCard(card.id)}
-            onRemove={() => {
-              removeCard(card.id);
-              toast.success(`Removed "${card.title}"`);
-            }}
+            onRemove={() => handleRemove(card.id, card.title)}
           />
         </div>
       )),
-    [cards, onEditCard, duplicateCard, removeCard],
+    [cards, removingIds, onEditCard, duplicateCard, handleRemove],
   );
 
   const isEmpty = storeHydrated && cards.length === 0;
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-auto p-5">
+    <div className="relative min-h-0 flex-1 overflow-auto p-5 print:overflow-visible">
       {/* Keep the (empty) grid measurable and droppable behind the hero. */}
-      <div ref={containerRef} className="[&_.react-grid-layout]:min-h-[420px]">
+      <div ref={containerRef} className="bms-print-zoom [&_.react-grid-layout]:min-h-[420px]">
         {mounted && (
           <GridLayout
             width={width}
@@ -111,7 +133,7 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
         )}
       </div>
       {isEmpty && (
-        <div className="pointer-events-none absolute inset-0 flex animate-[fade-up_0.4s_ease] flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="pointer-events-none absolute inset-0 flex animate-[fade-up_0.4s_ease] flex-col items-center justify-center gap-4 p-6 text-center print:hidden">
           <div className="flex size-[92px] items-center justify-center rounded-[20px] border-2 border-border-strong border-dashed text-fg-subtle">
             <IconCanvasEmpty size={40} />
           </div>

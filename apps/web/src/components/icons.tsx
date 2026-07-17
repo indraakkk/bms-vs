@@ -125,6 +125,16 @@ export function IconImport(props: IconProps) {
   );
 }
 
+export function IconPrint(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 8V3h10v5" />
+      <path d="M7 17H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-3" />
+      <rect x="7" y="14" width="10" height="7" rx="1" />
+    </svg>
+  );
+}
+
 export function IconPlus(props: IconProps) {
   return (
     <svg {...base(props)}>

@@ -18,11 +18,13 @@ import { cn } from "@/lib/utils";
 
 export function CardShell({
   card,
+  removing = false,
   onEdit,
   onDuplicate,
   onRemove,
 }: {
   card: DashboardCard;
+  removing?: boolean;
   onEdit: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
@@ -47,11 +49,16 @@ export function CardShell({
 
   return (
     <div
-      className="flex h-full w-full animate-[card-in_0.42s_cubic-bezier(0.2,0.8,0.2,1)] flex-col overflow-hidden rounded-[14px] border bg-card"
+      className={cn(
+        "flex h-full w-full flex-col overflow-hidden rounded-[14px] border bg-card",
+        removing
+          ? "pointer-events-none animate-[card-out_0.2s_ease_forwards]"
+          : "animate-[card-in_0.42s_cubic-bezier(0.2,0.8,0.2,1)]",
+      )}
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <header className="bms-card-drag flex shrink-0 cursor-grab items-center gap-2 border-b bg-card py-[9px] pr-2.5 pl-2 active:cursor-grabbing">
-        <span className="flex shrink-0 text-fg-subtle" title="Drag to move">
+        <span className="flex shrink-0 text-fg-subtle print:hidden" title="Drag to move">
           <IconGrip size={15} />
         </span>
         <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-accent text-primary">
@@ -63,7 +70,7 @@ export function CardShell({
             {card.config ? summarizeConfig(card.config) : "Choose a data source & axes"}
           </div>
         </div>
-        <div className="flex shrink-0 gap-px" data-no-drag>
+        <div className="flex shrink-0 gap-px print:hidden" data-no-drag>
           <CardAction label="Configure" onClick={onEdit}>
             <IconPencil size={14} />
           </CardAction>

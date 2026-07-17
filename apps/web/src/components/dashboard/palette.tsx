@@ -17,7 +17,7 @@ export function Palette({ onCardAdded }: { onCardAdded: (cardId: string) => void
   const hasCards = useDashboardStore((s) => s.cards.length > 0);
 
   return (
-    <aside className="flex w-[232px] shrink-0 flex-col gap-[9px] overflow-auto border-r bg-card px-3.5 py-4">
+    <aside className="flex w-[232px] shrink-0 flex-col gap-[9px] overflow-auto border-r bg-card px-3.5 py-4 print:hidden">
       <div className="mb-0.5">
         <div className="font-bold text-[13px]">Card Palette</div>
         <div className="mt-px text-[11.5px] text-fg-subtle">
