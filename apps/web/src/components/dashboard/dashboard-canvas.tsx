@@ -1,7 +1,7 @@
 "use client";
 
-import type { CardType, GridLayoutItem } from "@bms/contract";
-import { useCallback, useMemo, useState } from "react";
+import type { CardType, DashboardCard, GridLayoutItem } from "@bms/contract";
+import { useCallback, useMemo, useRef, useState } from "react";
 import GridLayout, { useContainerWidth } from "react-grid-layout";
 import { toast } from "sonner";
 import { CardShell } from "@/components/dashboard/card-shell";
@@ -30,6 +30,8 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
   const removeCard = useDashboardStore((s) => s.removeCard);
   const duplicateCard = useDashboardStore((s) => s.duplicateCard);
   const loadSample = useDashboardStore((s) => s.loadSample);
+  const enteringIds = useDashboardStore((s) => s.enteringIds);
+  const ackEntered = useDashboardStore((s) => s.ackEntered);
 
   const dropConfig = useMemo(
     () => ({
@@ -72,28 +74,66 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
   );
 
   // Cards animate out before they leave the store: Remove marks the id,
-  // the card plays its card-out keyframe, and only then does removeCard
-  // unmount it (RGL's transform transitions animate the re-compaction).
+  // the card plays its card-out keyframe, and its animationend event
+  // finalizes the removal (RGL's transform transitions then animate the
+  // re-compaction). The timer is only a safety net for the event never
+  // firing (e.g. `animation: none` from some future rule); its map entry
+  // doubles as the idempotency guard so event + fallback can't both
+  // finalize. Timers deliberately survive unmount — they commit the
+  // store removal the user already asked for. Each entry pins the exact
+  // card object it was armed for: if the store was wholesale-replaced
+  // mid-exit (clear canvas / sample / import can reinstate the same id
+  // as a NEW object), finalize only cleans up instead of deleting-and-
+  // toasting a card this removal no longer owns.
   const [removingIds, setRemovingIds] = useState<ReadonlySet<string>>(new Set());
+  const removalTimers = useRef(new Map<string, { timer: number; card: DashboardCard }>());
 
-  const handleRemove = useCallback(
+  const finalizeRemove = useCallback(
     (cardId: string, title: string) => {
+      const entry = removalTimers.current.get(cardId);
+      if (entry === undefined) return;
+      window.clearTimeout(entry.timer);
+      removalTimers.current.delete(cardId);
       setRemovingIds((prev) => {
-        if (prev.has(cardId)) return prev;
-        return new Set(prev).add(cardId);
+        const next = new Set(prev);
+        next.delete(cardId);
+        return next;
       });
-      window.setTimeout(() => {
+      const live = useDashboardStore.getState().cards.find((c) => c.id === cardId);
+      if (live === entry.card) {
         removeCard(cardId);
-        setRemovingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(cardId);
-          return next;
-        });
         toast.success(`Removed "${title}"`);
-      }, 200);
+      }
     },
     [removeCard],
   );
+
+  const handleRemove = useCallback(
+    (cardId: string, title: string) => {
+      if (removalTimers.current.has(cardId)) return;
+      const card = useDashboardStore.getState().cards.find((c) => c.id === cardId);
+      if (!card) return;
+      setRemovingIds((prev) => new Set(prev).add(cardId));
+      removalTimers.current.set(cardId, {
+        timer: window.setTimeout(() => finalizeRemove(cardId, title), 400),
+        card,
+      });
+    },
+    [finalizeRemove],
+  );
+
+  // New cards (added / duplicated / sample / imported this session) play
+  // a short staggered card-in; hydrated cards render settled. CardShell
+  // freezes its own slot at mount, so acks shifting this map are inert.
+  const enterDelays = useMemo(() => {
+    const entering = new Set(enteringIds);
+    const delays = new Map<string, number>();
+    let slot = 0;
+    for (const card of cards) {
+      if (entering.has(card.id)) delays.set(card.id, Math.min(slot++ * 45, 315));
+    }
+    return delays;
+  }, [cards, enteringIds]);
 
   const gridChildren = useMemo(
     () =>
@@ -102,13 +142,26 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
           <CardShell
             card={card}
             removing={removingIds.has(card.id)}
+            entering={enterDelays.has(card.id)}
+            enterDelayMs={enterDelays.get(card.id) ?? 0}
+            onEntered={() => ackEntered(card.id)}
             onEdit={() => onEditCard(card.id)}
             onDuplicate={() => duplicateCard(card.id)}
             onRemove={() => handleRemove(card.id, card.title)}
+            onRemoved={() => finalizeRemove(card.id, card.title)}
           />
         </div>
       )),
-    [cards, removingIds, onEditCard, duplicateCard, handleRemove],
+    [
+      cards,
+      removingIds,
+      enterDelays,
+      ackEntered,
+      onEditCard,
+      duplicateCard,
+      handleRemove,
+      finalizeRemove,
+    ],
   );
 
   const isEmpty = storeHydrated && cards.length === 0;
@@ -133,7 +186,7 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
         )}
       </div>
       {isEmpty && (
-        <div className="pointer-events-none absolute inset-0 flex animate-[fade-up_0.4s_ease] flex-col items-center justify-center gap-4 p-6 text-center print:hidden">
+        <div className="pointer-events-none absolute inset-0 flex animate-[fade-up_0.3s_cubic-bezier(0.23,1,0.32,1)] flex-col items-center justify-center gap-4 p-6 text-center print:hidden">
           <div className="flex size-[92px] items-center justify-center rounded-[20px] border-2 border-border-strong border-dashed text-fg-subtle">
             <IconCanvasEmpty size={40} />
           </div>
@@ -147,7 +200,7 @@ export function DashboardCanvas({ onEditCard }: { onEditCard: (cardId: string) =
           <button
             type="button"
             onClick={loadSample}
-            className="pointer-events-auto mt-1 flex items-center gap-2 rounded-[10px] bg-primary px-[18px] py-[11px] font-bold text-[13px] text-primary-foreground shadow-[0_6px_18px_-6px_var(--primary)] transition-opacity hover:opacity-90"
+            className="pointer-events-auto mt-1 flex items-center gap-2 rounded-[10px] bg-primary px-[18px] py-[11px] font-bold text-[13px] text-primary-foreground shadow-[0_6px_18px_-6px_var(--primary)] transition-[opacity,scale] hover:opacity-90 active:scale-[0.98]"
           >
             <IconPlus size={16} />
             Load sample dashboard

@@ -1,6 +1,7 @@
 "use client";
 
 import type { DashboardCard } from "@bms/contract";
+import { useState } from "react";
 import { CardRenderer } from "@/components/dashboard/cards/card-renderer";
 import {
   CARD_TYPE_ICON,
@@ -19,18 +20,42 @@ import { cn } from "@/lib/utils";
 export function CardShell({
   card,
   removing = false,
+  entering = false,
+  enterDelayMs = 0,
+  onEntered,
   onEdit,
   onDuplicate,
   onRemove,
+  onRemoved,
 }: {
   card: DashboardCard;
   removing?: boolean;
+  /** Play the card-in entrance — new cards only; hydrated cards render settled. */
+  entering?: boolean;
+  /** Stagger slot for multi-card entrances (sample load / import). */
+  enterDelayMs?: number;
+  /** Fired when card-in completes, so the store stops marking this card as new. */
+  onEntered?: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /** Fired when the card-out exit completes — the removal's real commit point. */
+  onRemoved?: () => void;
 }) {
   const query = useCardQuery(card.id, card.config);
   const TypeIcon = CARD_TYPE_ICON[card.cardType];
+
+  // Freeze the stagger slot per entrance: earlier cards acking mid-wave
+  // reshuffle the entering list, and changing animation-delay mid-flight
+  // makes a running CSS animation jump. Re-freeze on a rising `entering`
+  // edge (same-id re-import reuses live instances), so a replayed
+  // entrance takes its new slot instead of a stale frozen one.
+  const [enterDelay, setEnterDelay] = useState(enterDelayMs);
+  const [wasEntering, setWasEntering] = useState(entering);
+  if (entering !== wasEntering) {
+    setWasEntering(entering);
+    if (entering) setEnterDelay(enterDelayMs);
+  }
 
   const status =
     card.config === null
@@ -52,10 +77,19 @@ export function CardShell({
       className={cn(
         "flex h-full w-full flex-col overflow-hidden rounded-[14px] border bg-card",
         removing
-          ? "pointer-events-none animate-[card-out_0.2s_ease_forwards]"
-          : "animate-[card-in_0.42s_cubic-bezier(0.2,0.8,0.2,1)]",
+          ? "pointer-events-none animate-[card-out_0.2s_cubic-bezier(0.23,1,0.32,1)_forwards]"
+          : entering && "animate-[card-in_0.24s_cubic-bezier(0.23,1,0.32,1)_backwards]",
       )}
-      style={{ boxShadow: "var(--shadow-card)" }}
+      style={{
+        boxShadow: "var(--shadow-card)",
+        animationDelay: !removing && entering ? `${enterDelay}ms` : undefined,
+      }}
+      // animationend bubbles from children (shimmer, ping-dot) — the name
+      // check keeps this to the shell's own enter/exit keyframes.
+      onAnimationEnd={(e) => {
+        if (e.animationName === "card-out") onRemoved?.();
+        else if (e.animationName === "card-in") onEntered?.();
+      }}
     >
       <header className="bms-card-drag flex shrink-0 cursor-grab items-center gap-2 border-b bg-card py-[9px] pr-2.5 pl-2 active:cursor-grabbing">
         <span className="flex shrink-0 text-fg-subtle print:hidden" title="Drag to move">
@@ -95,7 +129,7 @@ export function CardShell({
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg bg-primary px-[15px] py-[7px] font-bold text-[12px] text-primary-foreground transition-opacity hover:opacity-90"
+              className="rounded-lg bg-primary px-[15px] py-[7px] font-bold text-[12px] text-primary-foreground transition-[opacity,scale] hover:opacity-90 active:scale-[0.97]"
             >
               Configure card
             </button>
@@ -164,7 +198,7 @@ function CardAction({
       aria-label={label}
       onClick={onClick}
       className={cn(
-        "flex size-[26px] items-center justify-center rounded-[7px] text-fg-subtle transition-colors",
+        "flex size-[26px] items-center justify-center rounded-[7px] text-fg-subtle transition-[color,background-color,scale] active:scale-95",
         destructive ? "hover:bg-crit-soft hover:text-crit" : "hover:bg-surface-3 hover:text-foreground",
       )}
     >
@@ -190,7 +224,7 @@ function LoadingState() {
 function ShimmerBar({ className }: { className?: string }) {
   return (
     <div className={cn("relative overflow-hidden rounded-[5px] bg-surface-3", className)}>
-      <span className="absolute inset-0 translate-x-[-160%] animate-[shimmer_1.3s_infinite] bg-gradient-to-r from-transparent via-border-strong to-transparent" />
+      <span className="absolute inset-0 translate-x-[-160%] animate-[shimmer_1.3s_linear_infinite] bg-gradient-to-r from-transparent via-border-strong to-transparent" />
     </div>
   );
 }

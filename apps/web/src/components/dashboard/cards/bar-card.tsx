@@ -73,7 +73,9 @@ export function BarCard({
           contentStyle={TOOLTIP_STYLE}
           cursor={{ fill: "var(--accent)", opacity: 0.5 }}
         />
-        <Bar dataKey="y" radius={[4, 4, 0, 0]} maxBarSize={48}>
+        {/* Charts redraw on every filter/refetch — recharts' default grow-in
+            would replay each time, so data draws settled (matches the Area). */}
+        <Bar dataKey="y" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false}>
           <LabelList
             dataKey="y"
             position="top"

@@ -295,12 +295,38 @@
   z-index: 10;
   cursor: grabbing;
 }
+/* RGL v2 positions items via transforms, but its stock rule still lists
+ * the layout properties left/top (used only pre-mount) — narrow the
+ * transition to the compositor-friendly set. width/height stay: the
+ * resize-release snap eases through them, and they only relayout the
+ * absolutely-positioned item's own subtree. */
+.react-grid-item {
+  transition-property: transform, width, height;
+}
 
 /* Sonner: the mock's toast is an inverted bottom-center pill; errors go
  * on the critical color. */
 [data-sonner-toast][data-type="error"] {
   --normal-bg: var(--crit) !important;
   --normal-text: #fff !important;
+}
+
+/* Reduced motion: collapse every animation and transition to a single
+ * frame. Durations go to ~0 instead of `animation: none` so animation
+ * end events still fire — card removal (DashboardCanvas) and Radix's
+ * unmount-on-exit-animation both wait on them. Delays are zeroed so the
+ * card-in stagger's `backwards` fill can't hold cards invisible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Print / PDF export (bonus): the dashboard header's Print button flips

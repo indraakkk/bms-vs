@@ -5,8 +5,12 @@ import { Tooltip as TooltipPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+// Delay the first tooltip so hover-scrubbing across the UI doesn't flash
+// labels; Radix then skips the delay for adjacent tooltips
+// (skipDelayDuration, 300ms default). The floor plan's provider passes a
+// shorter delay — zone hover is that page's primary interaction.
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 300,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (

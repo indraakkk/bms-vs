@@ -269,7 +269,7 @@ function CardConfigForm({
           type="button"
           onClick={onCancel}
           aria-label="Close"
-          className="flex size-8 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-surface-3 hover:text-foreground"
+          className="flex size-8 items-center justify-center rounded-lg text-fg-subtle transition-[color,background-color,scale] hover:bg-surface-3 hover:text-foreground active:scale-95"
         >
           <IconClose size={17} />
         </button>
@@ -558,7 +558,7 @@ function CardConfigForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-[9px] border bg-secondary px-[17px] py-2.5 font-semibold text-[13px] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+          className="rounded-[9px] border bg-secondary px-[17px] py-2.5 font-semibold text-[13px] text-muted-foreground transition-[color,border-color,scale] hover:border-border-strong hover:text-foreground active:scale-[0.97]"
         >
           Cancel
         </button>
@@ -568,7 +568,7 @@ function CardConfigForm({
           onClick={() => {
             if (config) onSave(form.title.trim() || autoTitle(config), config);
           }}
-          className="rounded-[9px] bg-primary px-[18px] py-2.5 font-bold text-[13px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+          className="rounded-[9px] bg-primary px-[18px] py-2.5 font-bold text-[13px] text-primary-foreground transition-[opacity,scale] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
         >
           Apply configuration
         </button>

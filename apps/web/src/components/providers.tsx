@@ -13,7 +13,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Dark is the design's default theme; the sidebar toggle flips the
     // class on <html>. No system preference — the mock is explicit
     // dark-first with a manual Light/Dark switch.
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    // disableTransitionOnChange: a theme flip swaps the whole token set;
+    // per-element 150ms color transitions repaint at different times and
+    // tear. Atomic swap also keeps Print's light-flip out of the print
+    // snapshot's transition window.
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem={false}
+      disableTransitionOnChange
+    >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           {children}

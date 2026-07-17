@@ -172,6 +172,20 @@ rejects any published layout missing a live card's slot and no-ops on
 non-changes (see the comment on `setLayout`); storing such an echo
 verbatim re-enters RGL's adopt/publish effect cycle until React's
 "Maximum update depth exceeded" guard trips.
+A motion-polish pass (bonus) sits on top: `globals.css` ends with a
+global `prefers-reduced-motion` reset that collapses durations to ~0
+*instead of* `animation: none` — card removal and Radix's
+unmount-on-exit both wait on animation-end events, so those events must
+still fire. Card entrances are gated to session-new ids via the store's
+transient (non-persisted) `enteringIds` — hydrated cards render settled,
+multi-card loads (sample/import) stagger 45 ms per slot, and `CardShell`
+acks each id from its own `animationend`; removal is likewise finalized
+by the card-out animation's end event with a 400 ms fallback timer in
+`dashboard-canvas.tsx` (the timer-map entry doubles as the idempotency
+guard). Recharts series animations are `isAnimationActive={false}`
+everywhere. Pressables carry `active:scale-*` feedback — Tailwind v4
+note: `translate`/`scale` are standalone CSS properties there, so name
+them in `transition-[...]` lists (`transform` does not cover them).
 The floor plan (`components/floor-plan/`) draws only the zones each
 floor's real occupancy data has (`zone-shapes.ts`'s verified matrix —
 `BLD-001` floor 2 is the only 3-zone floor), never a fabricated zone;

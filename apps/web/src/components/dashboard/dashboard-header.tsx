@@ -131,7 +131,7 @@ export function DashboardHeader({
         type="button"
         onClick={onTogglePalette}
         className={cn(
-          "flex items-center gap-[7px] rounded-[9px] border px-[13px] py-2 font-semibold text-[12.5px] transition-colors print:hidden",
+          "flex items-center gap-[7px] rounded-[9px] border px-[13px] py-2 font-semibold text-[12.5px] transition-[color,background-color,border-color,scale] active:scale-[0.97] print:hidden",
           paletteOpen
             ? "border-primary bg-accent text-primary"
             : "border-border bg-secondary text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -149,7 +149,7 @@ function HeaderButton({ onClick, children }: { onClick: () => void; children: Re
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-[7px] rounded-[9px] border bg-secondary px-[13px] py-2 font-semibold text-[12.5px] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground print:hidden"
+      className="flex items-center gap-[7px] rounded-[9px] border bg-secondary px-[13px] py-2 font-semibold text-[12.5px] text-muted-foreground transition-[color,border-color,scale] hover:border-border-strong hover:text-foreground active:scale-[0.97] print:hidden"
     >
       {children}
     </button>

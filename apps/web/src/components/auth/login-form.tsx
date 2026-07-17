@@ -73,7 +73,11 @@ export function LoginForm() {
       key={shakeCount}
       className={cn(
         "w-[320px] max-w-full rounded-[20px] border bg-card px-[26px] py-[30px] shadow-[0_30px_80px_-24px_rgba(0,0,0,.6)]",
-        shakeCount > 0 ? "animate-[shake_0.4s_ease]" : "animate-[fade-up_0.4s_ease]",
+        // The shake's sharp curve is the classic "input rejected" jolt; a
+        // soft `ease` at 400ms read as a wobble, not a refusal.
+        shakeCount > 0
+          ? "animate-[shake_0.3s_cubic-bezier(0.36,0.07,0.19,0.97)]"
+          : "animate-[fade-up_0.35s_cubic-bezier(0.23,1,0.32,1)]",
       )}
     >
       <div className="mb-6 flex flex-col items-center gap-[5px]">
@@ -110,7 +114,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={submitting || pin.length === 0}
-          className="w-full rounded-[11px] bg-primary py-[11px] font-bold text-[13.5px] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="w-full rounded-[11px] bg-primary py-[11px] font-bold text-[13.5px] text-primary-foreground transition-[opacity,scale] hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
         >
           {submitting ? "Signing in…" : "Unlock console"}
         </button>
@@ -131,7 +135,7 @@ export function LoginForm() {
               type="button"
               disabled={submitting}
               onClick={() => submit(DEV_PIN)}
-              className="w-full rounded-[11px] border bg-secondary py-[11px] font-bold text-[13.5px] transition-colors hover:border-border-strong disabled:opacity-60"
+              className="w-full rounded-[11px] border bg-secondary py-[11px] font-bold text-[13.5px] transition-[border-color,scale] hover:border-border-strong active:scale-[0.98] disabled:opacity-60"
             >
               Enter demo workspace →
             </button>

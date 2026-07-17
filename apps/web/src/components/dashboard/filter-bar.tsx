@@ -177,7 +177,7 @@ function SegmentButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-[7px] px-[11px] py-1.5 font-semibold text-[12px] transition-colors",
+        "rounded-[7px] px-[11px] py-1.5 font-semibold text-[12px] transition-[color,background-color,scale] active:scale-[0.97]",
         active
           ? "bg-card text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
           : "text-muted-foreground hover:text-foreground",

@@ -128,6 +128,7 @@ export function LineCard({
             strokeLinecap="round"
             dot={endDot(seriesColor(i), lastIndexOf(key))}
             connectNulls
+            isAnimationActive={false}
           />
         ))}
       </ComposedChart>

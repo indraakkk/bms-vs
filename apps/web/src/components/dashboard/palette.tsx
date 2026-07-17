@@ -39,7 +39,10 @@ export function Palette({ onCardAdded }: { onCardAdded: (cardId: string) => void
             }}
             onDragEnd={() => setDraggingCardType(null)}
             onClick={() => onCardAdded(addCard(cardType))}
-            className="flex cursor-grab items-start gap-[11px] rounded-xl border bg-secondary p-3 text-left transition-[transform,border-color] duration-100 hover:-translate-y-px hover:border-primary active:cursor-grabbing"
+            // Tailwind v4 emits `translate`/`scale` as standalone CSS
+            // properties — `transform` in a transition list doesn't cover
+            // them, so the hover lift was snapping.
+            className="flex cursor-grab items-start gap-[11px] rounded-xl border bg-secondary p-3 text-left transition-[translate,scale,border-color] duration-100 hover:-translate-y-px hover:border-primary active:translate-y-0 active:scale-[0.98] active:cursor-grabbing"
             title={`Drag onto the grid, or click to add a ${CARD_TYPE_LABEL[cardType]}`}
           >
             <span className="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-accent text-primary">
@@ -60,7 +63,7 @@ export function Palette({ onCardAdded }: { onCardAdded: (cardId: string) => void
       <button
         type="button"
         onClick={loadSample}
-        className="flex items-center justify-center gap-[7px] rounded-[10px] border border-border-strong border-dashed bg-transparent p-[9px] font-semibold text-[12px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+        className="flex items-center justify-center gap-[7px] rounded-[10px] border border-border-strong border-dashed bg-transparent p-[9px] font-semibold text-[12px] text-muted-foreground transition-[color,border-color,scale] hover:border-primary hover:text-foreground active:scale-[0.98]"
       >
         Load sample dashboard
       </button>
@@ -68,7 +71,7 @@ export function Palette({ onCardAdded }: { onCardAdded: (cardId: string) => void
         <button
           type="button"
           onClick={clearAll}
-          className="p-2 font-semibold text-[12px] text-fg-subtle transition-colors hover:text-crit"
+          className="p-2 font-semibold text-[12px] text-fg-subtle transition-[color,scale] hover:text-crit active:scale-[0.97]"
         >
           Clear canvas
         </button>

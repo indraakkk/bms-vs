@@ -69,7 +69,7 @@ export function Sidebar() {
           type="button"
           onClick={handleLock}
           title="Lock console"
-          className="flex w-10 items-center justify-center rounded-[10px] border bg-secondary text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+          className="flex w-10 items-center justify-center rounded-[10px] border bg-secondary text-muted-foreground transition-[color,border-color,scale] hover:border-border-strong hover:text-foreground active:scale-[0.97]"
         >
           <IconLock size={16} />
         </button>
@@ -161,7 +161,7 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="flex flex-1 items-center justify-center gap-2 rounded-[10px] border bg-secondary py-[9px] font-semibold text-[12.5px] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+      className="flex flex-1 items-center justify-center gap-2 rounded-[10px] border bg-secondary py-[9px] font-semibold text-[12.5px] text-muted-foreground transition-[color,border-color,scale] hover:border-border-strong hover:text-foreground active:scale-[0.97]"
     >
       {/* Theme is unknowable server-side; render a stable label until mounted. */}
       {mounted && isDark ? (

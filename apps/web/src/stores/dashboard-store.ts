@@ -52,6 +52,15 @@ interface DashboardStoreState {
   layout: GridLayoutItem[];
   /** Transient — not persisted. Which palette tile is being dragged, for the RGL ghost placeholder. */
   draggingCardType: CardType | null;
+  /** Transient — not persisted. Cards added this session whose card-in
+   *  entrance hasn't played yet; hydrated cards never enter this list,
+   *  so a page load renders them settled instead of replaying the
+   *  animation. CardShell acks on its animation's end event. Accepted
+   *  edge: navigating away mid-entrance strands un-acked ids, replaying
+   *  the entrance once on return — an unmount-time ack would instead eat
+   *  entrances under StrictMode's dev double-mount. */
+  enteringIds: string[];
+  ackEntered: (id: string) => void;
   /** Returns the new card's id so callers can open its config modal immediately. */
   addCard: (cardType: CardType, position?: { x: number; y: number }) => string;
   duplicateCard: (id: string) => void;
@@ -71,6 +80,7 @@ export const useDashboardStore = create<DashboardStoreState>()(
       cards: [],
       layout: [],
       draggingCardType: null,
+      enteringIds: [],
 
       addCard: (cardType, position) => {
         const id = crypto.randomUUID();
@@ -95,6 +105,7 @@ export const useDashboardStore = create<DashboardStoreState>()(
               { id, cardType, title: defaultCardTitle(cardType), config: null },
             ],
             layout,
+            enteringIds: [...state.enteringIds, id],
           };
         });
         return id;
@@ -120,6 +131,7 @@ export const useDashboardStore = create<DashboardStoreState>()(
             // Directly below the original; the compactor settles collisions.
             { i: newId, x: size.x, y: size.y + size.h, w: size.w, h: size.h },
           ]),
+          enteringIds: [...state.enteringIds, newId],
         }));
       },
 
@@ -133,18 +145,32 @@ export const useDashboardStore = create<DashboardStoreState>()(
         set((state) => ({
           cards: state.cards.filter((c) => c.id !== id),
           layout: state.layout.filter((l) => l.i !== id),
+          enteringIds: state.enteringIds.filter((e) => e !== id),
         }));
       },
 
-      clearAll: () => set({ cards: [], layout: [] }),
+      clearAll: () => set({ cards: [], layout: [], enteringIds: [] }),
 
+      // Imported and sample cards are all "new" — they get the entrance
+      // cascade, unlike hydrated cards.
       replaceState: (cards, layout) =>
-        set({ cards: [...cards], layout: reconcileLayout(cards, layout) }),
+        set({
+          cards: [...cards],
+          layout: reconcileLayout(cards, layout),
+          enteringIds: cards.map((c) => c.id),
+        }),
 
       loadSample: () => {
         const { cards, layout } = buildSampleDashboard();
-        set({ cards, layout: compact(layout) });
+        set({ cards, layout: compact(layout), enteringIds: cards.map((c) => c.id) });
       },
+
+      ackEntered: (id) =>
+        set((state) =>
+          state.enteringIds.includes(id)
+            ? { enteringIds: state.enteringIds.filter((e) => e !== id) }
+            : state,
+        ),
 
       /** Sink for RGL's onLayoutChange. RGL v2's publish effect can echo a
        *  layout that's one commit stale — right after an external drop it
