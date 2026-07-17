@@ -16,4 +16,9 @@ export const env = {
   get appPin() {
     return required("APP_PIN");
   },
+  /** Opt-in SQL statement + duration logging (bonus "query logging"). */
+  get logQueries() {
+    const value = process.env.QUERY_LOG;
+    return value === "1" || value === "true";
+  },
 };

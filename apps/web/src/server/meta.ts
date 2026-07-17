@@ -1,10 +1,10 @@
-import { type MetaResponse, TABLE_META } from "@bms/contract";
+import { type DbError, type MetaResponse, TABLE_META } from "@bms/contract";
 import { Context, Effect, Layer } from "effect";
-import { PrismaService } from "./prisma";
+import { PrismaService, tryDb } from "./prisma";
 
 export class MetaService extends Context.Service<
   MetaService,
-  { readonly get: () => Effect.Effect<MetaResponse> }
+  { readonly get: () => Effect.Effect<MetaResponse, DbError> }
 >()("MetaService") {
   static readonly layer = Layer.effect(
     this,
@@ -15,7 +15,7 @@ export class MetaService extends Context.Service<
         // occupancy is the one table guaranteed to cover every
         // building/floor combination (it drives the floor plan's zone
         // matrix), so it's the source of truth for these filter options.
-        const rows = yield* Effect.promise(() =>
+        const rows = yield* tryDb(() =>
           prisma.occupancy.findMany({
             select: { buildingId: true, floor: true },
             distinct: ["buildingId", "floor"],

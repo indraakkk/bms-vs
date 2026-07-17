@@ -1,7 +1,7 @@
-import type { OccupancyLatestResponse, ZoneOccupancy } from "@bms/contract";
+import type { DbError, OccupancyLatestResponse, ZoneOccupancy } from "@bms/contract";
 import { Context, Effect, Layer } from "effect";
 import { ClockService } from "./clock";
-import { PrismaService } from "./prisma";
+import { PrismaService, tryDb } from "./prisma";
 
 const STALE_AFTER_MS = 60 * 60 * 1000;
 
@@ -11,7 +11,7 @@ export class OccupancyService extends Context.Service<
     readonly latest: (
       buildingId: string,
       floor: number,
-    ) => Effect.Effect<OccupancyLatestResponse>;
+    ) => Effect.Effect<OccupancyLatestResponse, DbError>;
   }
 >()("OccupancyService") {
   static readonly layer = Layer.effect(
@@ -27,7 +27,7 @@ export class OccupancyService extends Context.Service<
         // No DISTINCT ON / window-function support needed at this data
         // scale (a handful of rows per zone) — fetch newest-first and
         // keep the first row seen per zone in JS.
-        const rows = yield* Effect.promise(() =>
+        const rows = yield* tryDb(() =>
           prisma.occupancy.findMany({
             where: { buildingId, floor },
             orderBy: { timestamp: "desc" },

@@ -3,6 +3,7 @@ import {
   type CardConfig,
   type ColumnMeta,
   type DataSource,
+  type DbError,
   findColumn,
   type GlobalFilters,
   type QueryResponse,
@@ -14,7 +15,7 @@ import { Prisma, type PrismaClient } from "@bms/database";
 import { Context, Effect, Layer } from "effect";
 import { ClockService } from "./clock";
 import { DB_COLUMN, DB_TABLE } from "./db-columns";
-import { PrismaService } from "./prisma";
+import { PrismaService, tryDb } from "./prisma";
 
 const checkColumn = Effect.fn("QueryService.checkColumn")(function* (
   source: DataSource,
@@ -97,19 +98,56 @@ const validateConfig = Effect.fn("QueryService.validateConfig")(function* (
         }),
       );
     }
+    if (config.filter.value.trim() === "") {
+      yield* Effect.fail(
+        new ValidationError({
+          message: `Filter value for column "${config.filter.column}" must not be empty`,
+        }),
+      );
+    }
+    // Without this, a non-numeric value would coerce to NaN in
+    // coerceFilterValue and match zero rows — a silently-empty 200 the
+    // user can't distinguish from genuinely absent data.
+    if (filterMeta.dbType === "number" && !Number.isFinite(Number(config.filter.value))) {
+      yield* Effect.fail(
+        new ValidationError({
+          message: `Filter value "${config.filter.value}" is not a number — column "${config.filter.column}" is numeric`,
+        }),
+      );
+    }
   }
 });
 
 const validateGlobalFilters = Effect.fn(
   "QueryService.validateGlobalFilters",
 )(function* (globalFilters: GlobalFilters) {
-  if (
-    globalFilters.timeRange.preset === "custom" &&
-    (!globalFilters.timeRange.from || !globalFilters.timeRange.to)
-  ) {
-    yield* Effect.fail(
+  if (globalFilters.timeRange.preset !== "custom") {
+    return;
+  }
+  const { from, to } = globalFilters.timeRange;
+  if (!from || !to) {
+    return yield* Effect.fail(
       new ValidationError({
         message: '"custom" time range requires both "from" and "to"',
+      }),
+    );
+  }
+  // An unparseable bound would flow into the Prisma where-range as an
+  // Invalid Date and fail deep in the driver as a 500 — reject it here
+  // as the client error it actually is.
+  const fromMs = new Date(from).getTime();
+  const toMs = new Date(to).getTime();
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
+    return yield* Effect.fail(
+      new ValidationError({
+        message: '"from" and "to" must be valid ISO-8601 timestamps',
+      }),
+    );
+  }
+  if (fromMs > toMs) {
+    return yield* Effect.fail(
+      new ValidationError({
+        message: '"from" must not be after "to"',
       }),
     );
   }
@@ -184,12 +222,12 @@ const runAggregate = Effect.fn("QueryService.runAggregate")(function* (
   where: Record<string, unknown>,
 ) {
   if (aggregation === "count") {
-    return yield* Effect.promise(
+    return yield* tryDb(
       (): Promise<number> => delegate(prisma, source).count({ where }),
     );
   }
   const opKey = `_${aggregation}`;
-  const result = yield* Effect.promise(
+  const result = yield* tryDb(
     (): Promise<Record<string, Record<string, number | null>>> =>
       delegate(prisma, source).aggregate({ where, [opKey]: { [metric]: true } }),
   );
@@ -208,7 +246,7 @@ const runGroupBy = Effect.fn("QueryService.runGroupBy")(function* (
     aggregation === "count"
       ? { _count: { _all: true } }
       : { [`_${aggregation}`]: { [y]: true } };
-  const groups = yield* Effect.promise(
+  const groups = yield* tryDb(
     (): Promise<Array<Record<string, unknown>>> =>
       delegate(prisma, source).groupBy({ by: [x], where, ...opArgs }),
   );
@@ -276,7 +314,7 @@ const runLineQuery = Effect.fn("QueryService.runLineQuery")(function* (
       : Prisma.empty;
 
   const yArg = aggregation === "count" ? Prisma.raw("*") : yCol;
-  const rows = yield* Effect.promise(() =>
+  const rows = yield* tryDb(() =>
     prisma.$queryRaw<LineRow[]>(
       Prisma.sql`SELECT DATETRUNC(hour, ${xCol}) AS bucket, ${yAggFn}(${yArg}) AS y${seriesCol}
         FROM ${table}
@@ -299,7 +337,7 @@ export class QueryService extends Context.Service<
     readonly execute: (
       config: CardConfig,
       globalFilters: GlobalFilters,
-    ) => Effect.Effect<QueryResponse, ValidationError | UnknownColumnError>;
+    ) => Effect.Effect<QueryResponse, ValidationError | UnknownColumnError | DbError>;
   }
 >()("QueryService") {
   static readonly layer = Layer.effect(
