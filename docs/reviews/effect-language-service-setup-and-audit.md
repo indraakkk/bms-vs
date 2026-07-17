@@ -247,19 +247,27 @@ as a pointer to that existing coverage.
 
 ## Recommended follow-ups (none blocking)
 
-- Add `return` to the 5 `missingReturnYieldStar` sites in `query.ts`
-  (mechanical; the language service offers a quick-fix).
-- Batch-replace `yield* Effect.fail(new X(...))` → `yield* new X(...)`
-  across the 13 flagged sites (mechanical, zero behavior change).
-- One-line comment on `auth.ts:20` explaining why `Date.now()` — not
-  `ClockService` — is intentional there, so a future "consistency fix"
-  doesn't silently reintroduce a `DEMO_NOW` desync bug.
-- If `login/route.ts` or `http.ts` is touched again, consider a
-  post-success hook on `toResponse`/`handleJson` so login's cookie-set
-  path can reuse the shared error shape instead of hand-rolling one.
+> **Status update (2026-07-17)**: the first four items below were applied
+> during the project-wide follow-up audit — see
+> `effect-project-wide-audit.md` for verification (diagnostics now
+> 0 errors / 0 warnings / 0 messages, typecheck/lint clean, 35/35 tests
+> pass). Only the CI-wiring suggestion remains open as an opt-in.
+
+- ~~Add `return` to the 5 `missingReturnYieldStar` sites in `query.ts`~~
+  **FIXED** — all 5 sites now `return yield*`.
+- ~~Batch-replace `yield* Effect.fail(new X(...))` → `yield* new X(...)`
+  across the 13 flagged sites~~ **FIXED** — all 13 sites unwrapped.
+- ~~One-line comment on `auth.ts:20` explaining why `Date.now()` — not
+  `ClockService` — is intentional there~~ **FIXED** — comment added
+  above `signSession` in `auth.ts`.
+- ~~Login's error shape diverging from `toResponse`~~ **FIXED** — login's
+  `catchTags`/`catchCause` branches now carry `error: _tag` (and
+  `"InternalError"` for defects), and the failure response returns
+  `{error, message}` matching `http.ts`, with a comment explaining why
+  the route can't compose through `toResponse` (cookie-set on success).
 - `effect-language-service diagnostics --project <tsconfig>` is now
   available for ad hoc use, or could be wired into CI, without adopting
-  the more invasive `patch` step.
+  the more invasive `patch` step. (Still open — deliberate opt-in.)
 
 ## Files changed (Part 1 only — Part 2 was read-only)
 
