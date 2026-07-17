@@ -28,9 +28,10 @@ light-theme flip, `--print-zoom` fit-to-page, `print:hidden` chrome),
 card-removal exit animation (`card-out`, completing add/remove/rearrange
 transitions), SQL query logging (`QUERY_LOG=1` → Prisma query events with
 duration, wired in `createPrismaClient`), and a `bun test` unit suite
-(see Commands). Track B (CI/deploy) remains out of scope. Update this
-file's "Architecture" section if that changes — it should always describe
-what's actually in the tree, not just what's planned.
+(see Commands). Track B (CI/deploy) is now implemented — see the
+"Deployment" section below. Update this file's "Architecture" section if
+scope changes again — it should always describe what's actually in the
+tree, not just what's planned.
 
 ## Dev environment (Nix-only for tooling; MSSQL via Docker)
 
@@ -228,6 +229,41 @@ filters are empty against real wall-clock time unless `DEMO_NOW` is set —
 that's intentional (an honest empty state is itself a required feature,
 not a bug to hide). See `README.md`'s demo section for the specific
 `DEMO_NOW` values that populate vs. deliberately stale the dashboard.
+
+## Deployment (Track B, bonus)
+
+GCP project `vs-bms` (us-central1), fully reproducible from the repo:
+
+- **Images**: one root `Dockerfile`, two targets — `web` (Next
+  `output: 'standalone'` under bun; the standalone tree is traced from the
+  monorepo root via `outputFileTracingRoot`, server entry
+  `apps/web/server.js`; there is no `public/` dir, don't COPY one) and
+  `jobs` (full workspace; CMD = `db:migrate && db:seed`). Both must run on
+  **bun** — the Prisma client is generated with `runtime = "bun"`.
+- **CI** (`.github/workflows/ci.yml`): PR checks, `turbo run lint
+  typecheck test build`, all DB-free. Remote cache is a self-hosted
+  `ducktors/turborepo-remote-cache` Cloud Run service backed by GCS;
+  cache env vars are optional by design — never make CI hard-depend on
+  the cache. `turbo.json` has `remoteCache.signature: true`.
+- **Deploy** (`.github/workflows/deploy.yml`): on merge to main; keyless
+  WIF auth (trust condition: `assertion.repository == 'indraakkk/bms-vs'`);
+  buildx both targets → Artifact Registry `bms/` → run Cloud Run Job
+  `bms-migrate-seed` (`--wait`) → roll service `bms-web`. Deploy steps are
+  create-or-update (`gcloud run jobs deploy` / `gcloud run deploy`) with
+  the full runtime config inline — the workflow, not Pulumi, owns the
+  app's runtime flags (secrets refs, `DEMO_NOW`, VPC egress).
+- **Infra as code** (`infra/pulumi/`, Go): APIs, Artifact Registry (plus a
+  `dockerhub` remote-proxy repo so Cloud Run can pull Docker Hub images),
+  VPC private-services peering, Cloud SQL **SQL Server 2022 Express**
+  (`bms-sql`, private IP only, db-custom-1-3840), Secret Manager
+  (`bms-database-url`/`bms-auth-secret`/`bms-app-pin`), service accounts
+  (`bms-runtime`/`github-deployer`/`turbo-cache`), WIF, cache bucket +
+  service, $300 budget. Local Pulumi state; passphrase at
+  `~/.config/pulumi-bms-vs.passphrase`; see `infra/pulumi/README.md`.
+  Names above are load-bearing — deploy.yml references them literally.
+- **Cost**: Cloud SQL is the only always-on cost (~$50–60/mo); everything
+  else scales to zero. Teardown = `pulumi destroy` + deleting the CI-made
+  service/job.
 
 ## Other agent-facing notes
 

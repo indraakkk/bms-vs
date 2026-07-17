@@ -1,0 +1,107 @@
+# Deploy on merge to main: re-run the CI checks, build the two image
+# targets (web runtime + migrate/seed jobs image), push to Artifact
+# Registry, run the migrate+seed Cloud Run Job against Cloud SQL, then
+# roll the Cloud Run service to the new image.
+#
+# Auth is Workload Identity Federation (keyless): the GitHub OIDC token is
+# exchanged for github-deployer@<project> credentials — no JSON key in
+# repo secrets. One-time infra setup lives in infra/gcp/setup.sh.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never kill a deploy mid-flight; queue instead
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  deploy:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for WIF token exchange
+    env:
+      REGION: ${{ vars.GCP_REGION }}
+      IMAGE_BASE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/bms
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure docker for Artifact Registry
+        run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: web
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_BASE }}/web:${{ github.sha }}
+            ${{ env.IMAGE_BASE }}/web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push jobs image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: jobs
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_BASE }}/jobs:${{ github.sha }}
+            ${{ env.IMAGE_BASE }}/jobs:latest
+          cache-from: type=gha
+
+      # The two deploy steps below are create-or-update (jobs deploy / run
+      # deploy) with the full runtime config inline, so the very first merge
+      # to main creates the job and service — infra/gcp/setup.sh provisions
+      # only what these depend on (SQL, secrets, service accounts, VPC).
+
+      - name: Migrate and seed (Cloud Run Job)
+        run: |
+          gcloud run jobs deploy bms-migrate-seed \
+            --image "$IMAGE_BASE/jobs:$GITHUB_SHA" \
+            --region "$REGION" \
+            --service-account "bms-runtime@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+            --set-secrets "DATABASE_URL=bms-database-url:latest" \
+            --network default --subnet default --vpc-egress private-ranges-only \
+            --max-retries 0 --task-timeout 600 \
+            --quiet
+          gcloud run jobs execute bms-migrate-seed \
+            --region "$REGION" --wait
+
+      - name: Roll Cloud Run service to new image
+        run: |
+          gcloud run deploy bms-web \
+            --image "$IMAGE_BASE/web:$GITHUB_SHA" \
+            --region "$REGION" \
+            --service-account "bms-runtime@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+            --set-secrets "DATABASE_URL=bms-database-url:latest,AUTH_SECRET=bms-auth-secret:latest,APP_PIN=bms-app-pin:latest" \
+            --set-env-vars "DEMO_NOW=2025-06-01T22:30:00Z" \
+            --network default --subnet default --vpc-egress private-ranges-only \
+            --min-instances 0 --memory 1Gi \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe bms-web --region "$REGION" \
+            --format 'value(status.url)'
