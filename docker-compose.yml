@@ -6,8 +6,18 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-BmsDashboard!2025}"
       MSSQL_PID: "Developer"
+      # Cap SQL Server's max server memory. Without this, SQL Server grows its
+      # buffer pool until it owns nearly all of Docker's VM allocation; paired
+      # with `next dev`'s multi-GB Turbopack process on a 16 GB host that pushes
+      # the machine into memory pressure and can hard-hang it. The seeded
+      # dataset is tiny (198 rows), so 2 GB is generous.
+      MSSQL_MEMORY_LIMIT_MB: "2048"
     ports:
       - "1433:1433"
+    # Hard ceiling on the container itself, so a runaway can't starve the host.
+    # 3 GB leaves headroom above the 2 GB buffer-pool cap for the SQL engine.
+    mem_limit: 3g
+    memswap_limit: 3g
     volumes:
       - mssql-data:/var/opt/mssql
     healthcheck:
