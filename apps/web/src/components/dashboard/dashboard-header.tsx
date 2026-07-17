@@ -6,6 +6,8 @@ import { useTheme } from "next-themes";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { IconExport, IconImport, IconPlus, IconPrint } from "@/components/icons";
+import { SidebarTrigger } from "@/components/sidebar-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useMounted } from "@/hooks/use-mounted";
 import { cn } from "@/lib/utils";
 import { useDashboardStore } from "@/stores/dashboard-store";
@@ -101,6 +103,7 @@ export function DashboardHeader({
 
   return (
     <header className="flex items-center gap-3.5 border-b bg-card px-[22px] pt-[15px] pb-[13px]">
+      <SidebarTrigger />
       <div className="min-w-0">
         <h1 className="font-extrabold text-[18px] tracking-[-0.3px]">Dashboard Builder</h1>
         <div className="mt-px text-[12px] text-fg-subtle">
@@ -140,6 +143,7 @@ export function DashboardHeader({
         <IconPlus size={15} />
         Palette
       </button>
+      <ThemeToggle />
     </header>
   );
 }

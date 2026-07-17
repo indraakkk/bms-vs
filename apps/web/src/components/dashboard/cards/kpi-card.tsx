@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative sparkline behind the KPI number, already aria-hidden — the value/unit text carries the meaning.
 "use client";
 
 import type { CardConfig, QueryResponse } from "@bms/contract";

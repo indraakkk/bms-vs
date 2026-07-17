@@ -44,7 +44,9 @@ export function ZoneTooltipBody({ zone }: { zone: ZoneOccupancy }) {
 function TipRow({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <span className="text-fg-subtle">{label}</span>
+      {/* muted-foreground, not fg-subtle: at 12px on the light popover,
+       * fg-subtle is ~2.4:1 — below readable contrast. */}
+      <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-mono font-semibold">{value}</span>
     </>
   );

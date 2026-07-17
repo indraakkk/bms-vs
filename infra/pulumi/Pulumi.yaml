@@ -1,0 +1,3 @@
+name: bms-infra
+description: GCP infrastructure for the bms-vs deployment (Cloud SQL, WIF, turbo cache)
+runtime: go

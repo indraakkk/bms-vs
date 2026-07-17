@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative — every call site supplies the accessible name itself (aria-label on the parent button/tooltip, or adjacent visible text); see aria-hidden default in base() below.
 import type { CardType } from "@bms/contract";
 
 /**
@@ -16,6 +17,7 @@ function base({ size = 15, ...props }: IconProps) {
     fill: "none",
     stroke: "currentColor",
     strokeWidth: 1.8,
+    "aria-hidden": true,
     ...props,
   } as const;
 }
@@ -105,6 +107,23 @@ export function IconLock(props: IconProps) {
     <svg {...base(props)}>
       <rect x="5" y="11" width="14" height="9" rx="2" />
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+export function IconPanelLeft(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </svg>
+  );
+}
+
+export function IconChevronUpDown(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
     </svg>
   );
 }

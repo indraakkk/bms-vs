@@ -14,6 +14,9 @@ import {
   CHART_MONO,
   CHART_TICK,
   seriesColor,
+  TOOLTIP_CONTENT_STYLE,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
 } from "@/components/dashboard/cards/chart-colors";
 import {
   formatCompact,
@@ -22,15 +25,6 @@ import {
   formatTimestampUtc,
   pivotSeries,
 } from "@/components/dashboard/cards/chart-utils";
-
-const TOOLTIP_STYLE: React.CSSProperties = {
-  fontSize: 12,
-  borderRadius: 10,
-  background: "var(--popover)",
-  border: "1px solid var(--border-strong)",
-  color: "var(--popover-foreground)",
-  boxShadow: "0 16px 40px -12px rgba(0,0,0,.4)",
-};
 
 /** The mock's live-reading affordance: a pinging halo on each series'
  *  final point. Rendered via Recharts' function-form `dot`. */
@@ -104,7 +98,9 @@ export function LineCard({
         <Tooltip
           labelFormatter={formatTimestampUtc}
           formatter={(value: number) => formatNumber(value)}
-          contentStyle={TOOLTIP_STYLE}
+          contentStyle={TOOLTIP_CONTENT_STYLE}
+          itemStyle={TOOLTIP_ITEM_STYLE}
+          labelStyle={TOOLTIP_LABEL_STYLE}
         />
         {/* Soft area wash under the first series only, per the mock. */}
         <Area

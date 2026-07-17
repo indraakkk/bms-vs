@@ -135,8 +135,44 @@ SQL Server→card data flow, drag/drop strategy, dynamic axis binding,
 schema decisions, SVG floor-plan approach) and `PROMPT_HISTORY.md` for
 the phase-by-phase build log and decision record.
 
+## Deployment (bonus Track B: GCP + GitHub Actions)
+
+A live demo runs on GCP; nothing here is a take-home requirement — the
+required scope is fully covered by the local paths above.
+
+```
+PR            → ci.yml     lint / typecheck / test / build (turbo, DB-free)
+merge to main → deploy.yml WIF auth → docker buildx (2 targets) → Artifact Registry
+                            → Cloud Run Job bms-migrate-seed (migrate deploy + seed)
+                            → Cloud Run service bms-web
+bms-web ── Direct VPC egress ──► Cloud SQL (SQL Server 2022 Express, private IP only)
+```
+
+- **One Dockerfile, two targets** — `web` (Next standalone under bun,
+  ~270 MB) and `jobs` (full workspace: Prisma CLI + seed + `data/` CSVs).
+  Both honor `DATABASE_URL`; the service additionally takes `AUTH_SECRET`,
+  `APP_PIN` (all three from Secret Manager) and `DEMO_NOW` so reviewers
+  land on populated dashboards.
+- **Turborepo remote cache** — self-hosted `ducktors/turborepo-remote-cache`
+  on Cloud Run (scale-to-zero), artifacts in a GCS bucket with a 30-day
+  lifecycle, HMAC artifact signatures on (`remoteCache.signature`).
+  CI degrades gracefully to uncached builds if the cache is unreachable.
+- **Infrastructure as code** — everything the pipeline depends on (Cloud
+  SQL, secrets, service accounts, Workload Identity Federation, cache) is
+  a Pulumi Go program: see `infra/pulumi/README.md` for bootstrap, GitHub
+  wiring, and teardown. The app service/job themselves are created and
+  rolled by `deploy.yml` (`gcloud run … deploy`), so release config lives
+  next to the pipeline.
+- **Auth from CI is keyless** — GitHub OIDC → Workload Identity
+  Federation, trust restricted to this repository; no service-account
+  JSON key exists.
+- **Cost honesty** — Cloud Run scales to zero; Cloud SQL does not
+  (~$50–60/mo while it exists, the only real cost). Teardown is
+  `pulumi destroy` (or per-resource gcloud deletes) plus
+  `gcloud run services delete bms-web` / `gcloud run jobs delete
+  bms-migrate-seed`; a $300 budget with 50/80/100% alerts guards the
+  free-trial credit.
+
 ## Known limitations (by design, not oversights)
 
 - **Single shared PIN**, not per-user accounts — see [Auth](#auth).
-- **No CI/deploy pipeline** — this pass covers the local dev environment
-  (Nix devshell + Docker Compose) only.

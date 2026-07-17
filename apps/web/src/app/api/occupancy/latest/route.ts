@@ -11,17 +11,13 @@ export async function GET(request: Request) {
   return handleEffect(() =>
     Effect.gen(function* () {
       if (!buildingId || !floorParam) {
-        return yield* Effect.fail(
-          new ValidationError({
-            message: "Query params 'building_id' and 'floor' are required",
-          }),
-        );
+        return yield* new ValidationError({
+          message: "Query params 'building_id' and 'floor' are required",
+        });
       }
       const floor = Number(floorParam);
       if (Number.isNaN(floor)) {
-        return yield* Effect.fail(
-          new ValidationError({ message: "'floor' must be a number" }),
-        );
+        return yield* new ValidationError({ message: "'floor' must be a number" });
       }
       const occupancyService = yield* OccupancyService;
       return yield* occupancyService.latest(buildingId, floor);

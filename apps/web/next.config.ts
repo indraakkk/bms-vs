@@ -1,6 +1,12 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker/Cloud Run image. Tracing
+  // must start at the monorepo root so workspace deps (@bms/contract,
+  // @bms/database) land inside .next/standalone.
+  output: "standalone",
+  outputFileTracingRoot: path.join(__dirname, "../../"),
   // react-grid-layout@2.2.3's GridLayout has a controlled-layout effect
   // (propsLayout/children re-sync, keyed in part on its own internal
   // `layout` state) that isn't idempotent under React StrictMode's

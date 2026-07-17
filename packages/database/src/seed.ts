@@ -21,7 +21,7 @@ function toNullableUtcDate(timestamp: string): Date | null {
   return timestamp === "" ? null : toUtcDate(timestamp);
 }
 
-async function parseCsv<T>(filename: string): Promise<Record<string, string>[]> {
+async function parseCsv(filename: string): Promise<Record<string, string>[]> {
   const text = await Bun.file(join(dataDir, filename)).text();
   const result = Papa.parse<Record<string, string>>(text, {
     header: true,
