@@ -16,8 +16,11 @@ export async function GET(request: Request) {
         });
       }
       const floor = Number(floorParam);
-      if (Number.isNaN(floor)) {
-        return yield* new ValidationError({ message: "'floor' must be a number" });
+      // Integer, not just non-NaN: floor maps to an INT column. A
+      // fractional value (?floor=1.5) would pass Prisma the wrong type and
+      // surface as a 500 — reject it here as the 400 it actually is.
+      if (!Number.isInteger(floor)) {
+        return yield* new ValidationError({ message: "'floor' must be an integer" });
       }
       const occupancyService = yield* OccupancyService;
       return yield* occupancyService.latest(buildingId, floor);
