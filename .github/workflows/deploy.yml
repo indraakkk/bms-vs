@@ -95,7 +95,7 @@ jobs:
             --region "$REGION" \
             --service-account "bms-runtime@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
             --set-secrets "DATABASE_URL=bms-database-url:latest,AUTH_SECRET=bms-auth-secret:latest,APP_PIN=bms-app-pin:latest" \
-            --set-env-vars "DEMO_NOW=2025-06-01T22:30:00Z" \
+            --set-env-vars "DEMO_NOW=2025-06-01T22:30:00Z,QUERY_LOG=1" \
             --network default --subnet default --vpc-egress private-ranges-only \
             --min-instances 0 --memory 1Gi \
             --allow-unauthenticated \
