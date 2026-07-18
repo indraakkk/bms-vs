@@ -122,4 +122,13 @@ export interface MetaResponse {
   readonly tableMeta: Record<DataSource, ReadonlyArray<ColumnMeta>>;
   readonly buildings: ReadonlyArray<string>;
   readonly floors: ReadonlyArray<number>;
+  /**
+   * Per-source, per-column distinct values for the per-card filter's value
+   * picker, so the UI never asks the user to guess a value. Populated only
+   * for columns whose distinct count is small enough to be a sensible
+   * pick-list (see MetaService's cap) — continuous measures (energyKwh…)
+   * and near-unique id columns (deviceId, alertId) are intentionally
+   * absent, and the modal falls back to a typed input for those.
+   */
+  readonly filterOptions: Record<DataSource, Record<string, ReadonlyArray<string>>>;
 }
