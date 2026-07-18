@@ -42,10 +42,17 @@
   --ok-soft: oklch(0.723 0.219 149.579 / 10%);
   --crit: oklch(0.577 0.245 27.325);
   --crit-soft: oklch(0.577 0.245 27.325 / 10%);
-  --warn: oklch(0 0 0);
-  --warn-soft: oklch(0.97 0 0);
-  --info: oklch(0.556 0 0);
-  --info-soft: oklch(0.97 0 0);
+  /* Severity ramp per the take-home PDF: Critical=red, Warning=orange,
+   * Info=blue. Calibrated to this palette's discipline rather than dropped
+   * in: Info sits at Critical's exact lightness (0.577) so the three
+   * levels read as one weight-matched family, and Warning reuses the
+   * occupancy ramp's warm hue (~65) so the app speaks a single orange.
+   * Same rule that already governs the occupancy ramp — required
+   * semantics beat the mock's monochrome aesthetic. */
+  --warn: oklch(0.705 0.17 65);
+  --warn-soft: oklch(0.705 0.17 65 / 10%);
+  --info: oklch(0.577 0.166 254);
+  --info-soft: oklch(0.577 0.166 254 / 10%);
   /* Occupancy ramp per the take-home PDF (green=low, yellow=medium,
    * red=high — overrides the mock's neutral/green/red legend). Each band
    * pairs its fill with an -ink token for labels drawn on the fill:
@@ -95,10 +102,13 @@
   --ok-soft: oklch(0.792 0.209 151.711 / 15%);
   --crit: oklch(0.704 0.191 22.216);
   --crit-soft: oklch(0.704 0.191 22.216 / 15%);
-  --warn: oklch(0.985 0 0);
-  --warn-soft: oklch(0.371 0 0);
-  --info: oklch(0.708 0 0);
-  --info-soft: oklch(0.269 0 0);
+  /* Dark-theme severity ramp — same family as light, lifted to this
+   * theme's brighter band: Info at Critical's exact dark lightness
+   * (0.704), Warning a touch brighter to stay legible on dark soft. */
+  --warn: oklch(0.80 0.16 72);
+  --warn-soft: oklch(0.80 0.16 72 / 15%);
+  --info: oklch(0.704 0.152 254);
+  --info-soft: oklch(0.704 0.152 254 / 15%);
   --occ-low: oklch(0.792 0.209 151.711);
   --occ-low-ink: oklch(0.145 0 0);
   --occ-mid: oklch(0.828 0.189 84.429);
