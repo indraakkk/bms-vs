@@ -177,6 +177,14 @@ function CardConfigForm({
   const columns = form.source && meta ? meta.tableMeta[form.source] : [];
   const numericColumns = columns.filter((c) => c.isNumeric);
   const timestampColumns = columns.filter((c) => c.isTimestamp);
+
+  // Per-card filter value picker: if the chosen column has a short list of
+  // distinct values from /api/meta, the user picks from real data instead
+  // of guessing a string; otherwise (continuous measures, near-unique ids)
+  // fall back to a typed input, numeric-typed when the column is numeric.
+  const filterColMeta = columns.find((c) => c.name === form.filterColumn);
+  const filterValueOptions =
+    form.source && meta ? meta.filterOptions?.[form.source]?.[form.filterColumn] : undefined;
   const metricOptions = form.aggregation === "count" ? columns : numericColumns;
   const isCount = form.aggregation === "count";
   const metricHint = isCount ? " (ignored for Count)" : "";
@@ -489,10 +497,13 @@ function CardConfigForm({
                       <Select
                         value={form.filterColumn || NONE}
                         onValueChange={(v) =>
+                          // Always clear the value on a column change — a
+                          // value valid for the old column (e.g. "Critical")
+                          // would silently match zero rows against the new one.
                           setForm((f) => ({
                             ...f,
                             filterColumn: v === NONE ? "" : v,
-                            filterValue: v === NONE ? "" : f.filterValue,
+                            filterValue: "",
                           }))
                         }
                       >
@@ -510,13 +521,40 @@ function CardConfigForm({
                             ))}
                         </SelectContent>
                       </Select>
-                      <Input
-                        className={cn(FIELD_INPUT_CLASS, "py-[9px] text-[12.5px]")}
-                        value={form.filterValue}
-                        disabled={!form.filterColumn}
-                        onChange={(e) => setForm((f) => ({ ...f, filterValue: e.target.value }))}
-                        placeholder={form.filterColumn ? "e.g. BLD-001" : "Any value"}
-                      />
+                      {filterValueOptions ? (
+                        <Select
+                          value={form.filterValue || NONE}
+                          disabled={!form.filterColumn}
+                          onValueChange={(v) =>
+                            setForm((f) => ({ ...f, filterValue: v === NONE ? "" : v }))
+                          }
+                        >
+                          <SelectTrigger
+                            className={cn(FIELD_SELECT_CLASS, "py-[9px] text-[12.5px]")}
+                          >
+                            <SelectValue placeholder="Any value" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>Any value</SelectItem>
+                            {filterValueOptions.map((v) => (
+                              <SelectItem key={v} value={v}>
+                                {v}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          className={cn(FIELD_INPUT_CLASS, "py-[9px] text-[12.5px]")}
+                          type={filterColMeta?.dbType === "number" ? "number" : "text"}
+                          value={form.filterValue}
+                          disabled={!form.filterColumn}
+                          onChange={(e) => setForm((f) => ({ ...f, filterValue: e.target.value }))}
+                          placeholder={
+                            form.filterColumn ? `Enter ${filterColMeta?.label ?? "a value"}…` : "Any value"
+                          }
+                        />
+                      )}
                       <span className="whitespace-nowrap text-[11px] text-fg-subtle">per-card</span>
                     </div>
                   </Field>
