@@ -12,10 +12,15 @@ created imperatively:
 
 ```bash
 gcloud projects create vs-bms
-gcloud billing projects link vs-bms --billing-account=REDACTED
+gcloud billing projects link vs-bms --billing-account="$BILLING_ACCOUNT"
 gcloud services enable serviceusage.googleapis.com \
   cloudresourcemanager.googleapis.com --project vs-bms
 ```
+
+`$BILLING_ACCOUNT` is your billing account ID (`gcloud billing accounts
+list`) — kept out of the repo. Also register it as a stack secret so
+`pulumi up` can read it: `pulumi config set --secret
+bms-infra:billingAccount "$BILLING_ACCOUNT"`.
 
 ## State + credentials
 

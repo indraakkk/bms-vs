@@ -5,6 +5,8 @@ config:
   # project when running on plain gcloud user credentials.
   gcp:billingProject: vs-bms
   gcp:userProjectOverride: "true"
-  bms-infra:billingAccount: REDACTED
+  # billingAccount is not stored here — set it locally as a secret so the
+  # account ID never lands in the repo:
+  #   pulumi config set --secret bms-infra:billingAccount <ACCOUNT_ID>
   bms-infra:githubRepo: indraakkk/bms-vs
 encryptionsalt: v1:+7LnPKmBs1Q=:v1:R2+F48/eFEd7J6Xx:pDRUltXhNQD5vZ1u4eqk1Xt+yd3lVA==
