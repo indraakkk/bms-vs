@@ -3,7 +3,10 @@ import { Aggregation, CardType, DataSource } from "./domain";
 
 const CardFilter = Schema.Struct({
   column: Schema.String,
-  value: Schema.String,
+  // A filter value reaches the server and becomes a WHERE-clause literal.
+  // Cap its length so a hand-crafted request (or a tampered import) can't
+  // push an unbounded string through decode into the query path.
+  value: Schema.String.check(Schema.isMaxLength(200)),
 });
 
 const KpiCardConfig = Schema.Struct({
@@ -38,9 +41,13 @@ const GaugeCardConfig = Schema.Struct({
   source: DataSource,
   metric: Schema.String,
   aggregation: Aggregation,
-  min: Schema.Number,
-  max: Schema.Number,
-  target: Schema.Number,
+  // Finite, not bare Number: reject NaN / ±Infinity (and, via a tampered
+  // import, absurd bounds) at the schema edge so the gauge min<max check
+  // downstream compares real numbers — NaN >= NaN is false, so a NaN bound
+  // would otherwise slip past that check and render a broken gauge.
+  min: Schema.Finite,
+  max: Schema.Finite,
+  target: Schema.Finite,
   filter: Schema.optional(CardFilter),
 });
 
@@ -69,7 +76,9 @@ export type CardConfig = typeof CardConfig.Type;
 export const DashboardCard = Schema.Struct({
   id: Schema.String,
   cardType: CardType,
-  title: Schema.String,
+  // Bounded so an imported/hand-edited dashboard can't carry an
+  // unbounded title into React render + localStorage persistence.
+  title: Schema.String.check(Schema.isMaxLength(120)),
   config: Schema.NullOr(CardConfig),
 });
 export type DashboardCard = typeof DashboardCard.Type;
@@ -94,7 +103,10 @@ export type TimeRangePreset = typeof TimeRangePreset.Type;
 
 export const GlobalFilters = Schema.Struct({
   buildingId: Schema.optional(Schema.String),
-  floor: Schema.optional(Schema.Number),
+  // Int, not Number: the DB column is INT. A fractional floor (1.5) would
+  // otherwise decode fine, reach Prisma, and fail deep in the driver as a
+  // 500 — this rejects it at the edge as the 400 it actually is.
+  floor: Schema.optional(Schema.Int),
   timeRange: Schema.Struct({
     preset: TimeRangePreset,
     from: Schema.optional(Schema.String),
@@ -146,6 +158,8 @@ export const OccupancyLatestResponse = Schema.Struct({
 export type OccupancyLatestResponse = typeof OccupancyLatestResponse.Type;
 
 export const LoginRequest = Schema.Struct({
-  pin: Schema.String,
+  // Capped so login can't be fed an unbounded string (the constant-time
+  // compare and any hashing should never run over attacker-sized input).
+  pin: Schema.String.check(Schema.isMaxLength(128)),
 });
 export type LoginRequest = typeof LoginRequest.Type;

@@ -2,9 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
- * Severity keeps its fixed meaning in the design's palette: red is
- * reserved for Critical; Warning/Info ride the theme's mono warn/info
- * tokens (soft pill + strong text, the mock's badge idiom).
+ * Severity keeps its fixed meaning per the PDF: Critical=red, Warning=orange,
+ * Info=blue — via the theme's crit/warn/info tokens (soft pill + strong
+ * text, the mock's badge idiom). The tokens are calibrated to the palette
+ * in globals.css so both themes stay legible and weight-matched.
  */
 const SEVERITY_STYLES: Record<string, string> = {
   Critical: "border-transparent bg-crit-soft text-crit",
